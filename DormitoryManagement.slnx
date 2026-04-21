@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="D:/DormitoryManagement/Dormitory.BusinessServices/Dormitory.BusinessServices.csproj" Id="4bfeeace-7cb1-445e-93b6-6d1fa6c6c475" />
+  <Project Path="D:/DormitoryManagement/Dormitory.Models/Dormitory.Models.csproj" />
+  <Project Path="D:/DormitoryManagement/DormitoryManagement/DormitoryManagement.csproj" />
+</Solution>
