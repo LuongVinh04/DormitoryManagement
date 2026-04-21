@@ -1,0 +1,466 @@
+Using launch settings from Properties\launchSettings.json...
+Building...
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'DepositAmount' on entity type 'Contract'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'MonthlyFee' on entity type 'Contract'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'ElectricityFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'RoomFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'ServiceFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'Total' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'WaterFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'PricePerMonth' on entity type 'Rooms'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'ElectricityUnitPrice' on entity type 'Utilities'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'WaterUnitPrice' on entity type 'Utilities'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'DepositAmount' on entity type 'Contract'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'MonthlyFee' on entity type 'Contract'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'ElectricityFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'RoomFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'ServiceFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'Total' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'WaterFee' on entity type 'Invoices'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'PricePerMonth' on entity type 'Rooms'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'ElectricityUnitPrice' on entity type 'Utilities'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30000]
+      No store type was specified for the decimal property 'WaterUnitPrice' on entity type 'Utilities'. This will cause values to be silently truncated if they do not fit in the default precision and scale. Explicitly specify the SQL server column type that can accommodate all the values in 'OnModelCreating' using 'HasColumnType', specify precision and scale using 'HasPrecision', or configure a value converter using 'HasConversion'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (309ms) [Parameters=[], CommandType='Text', CommandTimeout='60']
+      CREATE DATABASE [DormitoryManagement];
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (144ms) [Parameters=[], CommandType='Text', CommandTimeout='60']
+      IF SERVERPROPERTY('EngineEdition') <> 5
+      BEGIN
+          ALTER DATABASE [DormitoryManagement] SET READ_COMMITTED_SNAPSHOT ON;
+      END;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Buildings] (
+          [Id] int NOT NULL IDENTITY,
+          [Code] nvarchar(450) NOT NULL,
+          [Name] nvarchar(max) NOT NULL,
+          [GenderPolicy] nvarchar(max) NOT NULL,
+          [NumberOfFloors] int NOT NULL,
+          [ManagerName] nvarchar(max) NOT NULL,
+          [Description] nvarchar(max) NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Buildings] PRIMARY KEY ([Id])
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Roles] (
+          [Id] int NOT NULL IDENTITY,
+          [Name] nvarchar(max) NOT NULL,
+          [Description] nvarchar(max) NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Roles] PRIMARY KEY ([Id])
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Rooms] (
+          [Id] int NOT NULL IDENTITY,
+          [RoomNumber] nvarchar(450) NOT NULL,
+          [BuildingId] int NOT NULL,
+          [FloorNumber] int NOT NULL,
+          [RoomType] nvarchar(max) NOT NULL,
+          [Capacity] int NOT NULL,
+          [CurrentOccupancy] int NOT NULL,
+          [PricePerMonth] decimal(18,2) NOT NULL,
+          [Status] nvarchar(max) NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Rooms] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Rooms_Buildings_BuildingId] FOREIGN KEY ([BuildingId]) REFERENCES [Buildings] ([Id]) ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Users] (
+          [Id] int NOT NULL IDENTITY,
+          [Username] nvarchar(450) NOT NULL,
+          [FullName] nvarchar(max) NOT NULL,
+          [Email] nvarchar(max) NOT NULL,
+          [PasswordHash] nvarchar(max) NOT NULL,
+          [RoleId] int NOT NULL,
+          [IsActive] bit NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Users] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Users_Roles_RoleId] FOREIGN KEY ([RoleId]) REFERENCES [Roles] ([Id]) ON DELETE NO ACTION
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Students] (
+          [Id] int NOT NULL IDENTITY,
+          [StudentCode] nvarchar(450) NOT NULL,
+          [Name] nvarchar(max) NOT NULL,
+          [Gender] nvarchar(max) NOT NULL,
+          [DateOfBirth] datetime2 NOT NULL,
+          [Phone] nvarchar(max) NOT NULL,
+          [Email] nvarchar(max) NOT NULL,
+          [Faculty] nvarchar(max) NOT NULL,
+          [ClassName] nvarchar(max) NOT NULL,
+          [Address] nvarchar(max) NOT NULL,
+          [EmergencyContact] nvarchar(max) NOT NULL,
+          [Status] nvarchar(max) NOT NULL,
+          [RoomId] int NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Students] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Students_Rooms_RoomId] FOREIGN KEY ([RoomId]) REFERENCES [Rooms] ([Id]) ON DELETE SET NULL
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Utilities] (
+          [Id] int NOT NULL IDENTITY,
+          [RoomId] int NOT NULL,
+          [ElectricityOld] int NOT NULL,
+          [ElectricityNew] int NOT NULL,
+          [WaterOld] int NOT NULL,
+          [WaterNew] int NOT NULL,
+          [ElectricityUnitPrice] decimal(18,2) NOT NULL,
+          [WaterUnitPrice] decimal(18,2) NOT NULL,
+          [BillingMonth] datetime2 NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Utilities] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Utilities_Rooms_RoomId] FOREIGN KEY ([RoomId]) REFERENCES [Rooms] ([Id]) ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Contracts] (
+          [Id] int NOT NULL IDENTITY,
+          [ContractCode] nvarchar(450) NOT NULL,
+          [StudentId] int NOT NULL,
+          [RoomId] int NOT NULL,
+          [DepositAmount] decimal(18,2) NOT NULL,
+          [MonthlyFee] decimal(18,2) NOT NULL,
+          [StartDate] datetime2 NOT NULL,
+          [EndDate] datetime2 NOT NULL,
+          [Status] nvarchar(max) NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Contracts] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Contracts_Rooms_RoomId] FOREIGN KEY ([RoomId]) REFERENCES [Rooms] ([Id]) ON DELETE NO ACTION,
+          CONSTRAINT [FK_Contracts_Students_StudentId] FOREIGN KEY ([StudentId]) REFERENCES [Students] ([Id]) ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Registrations] (
+          [Id] int NOT NULL IDENTITY,
+          [StudentId] int NOT NULL,
+          [RoomId] int NOT NULL,
+          [RegistrationDate] datetime2 NOT NULL,
+          [ApprovedDate] datetime2 NULL,
+          [Note] nvarchar(max) NOT NULL,
+          [Status] nvarchar(max) NOT NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Registrations] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Registrations_Rooms_RoomId] FOREIGN KEY ([RoomId]) REFERENCES [Rooms] ([Id]) ON DELETE NO ACTION,
+          CONSTRAINT [FK_Registrations_Students_StudentId] FOREIGN KEY ([StudentId]) REFERENCES [Students] ([Id]) ON DELETE CASCADE
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE [Invoices] (
+          [Id] int NOT NULL IDENTITY,
+          [InvoiceCode] nvarchar(450) NOT NULL,
+          [StudentId] int NOT NULL,
+          [RoomId] int NOT NULL,
+          [UtilityId] int NULL,
+          [RoomFee] decimal(18,2) NOT NULL,
+          [ElectricityFee] decimal(18,2) NOT NULL,
+          [WaterFee] decimal(18,2) NOT NULL,
+          [ServiceFee] decimal(18,2) NOT NULL,
+          [Total] decimal(18,2) NOT NULL,
+          [Status] nvarchar(max) NOT NULL,
+          [BillingMonth] datetime2 NOT NULL,
+          [DueDate] datetime2 NOT NULL,
+          [PaidDate] datetime2 NULL,
+          [CreatedAt] datetime2 NOT NULL,
+          [UpdatedAt] datetime2 NULL,
+          CONSTRAINT [PK_Invoices] PRIMARY KEY ([Id]),
+          CONSTRAINT [FK_Invoices_Rooms_RoomId] FOREIGN KEY ([RoomId]) REFERENCES [Rooms] ([Id]) ON DELETE NO ACTION,
+          CONSTRAINT [FK_Invoices_Students_StudentId] FOREIGN KEY ([StudentId]) REFERENCES [Students] ([Id]) ON DELETE CASCADE,
+          CONSTRAINT [FK_Invoices_Utilities_UtilityId] FOREIGN KEY ([UtilityId]) REFERENCES [Utilities] ([Id]) ON DELETE SET NULL
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX [IX_Buildings_Code] ON [Buildings] ([Code]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX [IX_Contracts_ContractCode] ON [Contracts] ([ContractCode]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Contracts_RoomId] ON [Contracts] ([RoomId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Contracts_StudentId] ON [Contracts] ([StudentId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX [IX_Invoices_InvoiceCode] ON [Invoices] ([InvoiceCode]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Invoices_RoomId] ON [Invoices] ([RoomId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Invoices_StudentId] ON [Invoices] ([StudentId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Invoices_UtilityId] ON [Invoices] ([UtilityId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Registrations_RoomId] ON [Registrations] ([RoomId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Registrations_StudentId] ON [Registrations] ([StudentId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX [IX_Rooms_BuildingId_RoomNumber] ON [Rooms] ([BuildingId], [RoomNumber]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Students_RoomId] ON [Students] ([RoomId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX [IX_Students_StudentCode] ON [Students] ([StudentCode]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Users_RoleId] ON [Users] ([RoleId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX [IX_Users_Username] ON [Users] ([Username]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX [IX_Utilities_RoomId] ON [Utilities] ([RoomId]);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (23ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT CASE
+          WHEN EXISTS (
+              SELECT 1
+              FROM [Buildings] AS [b]) THEN CAST(1 AS bit)
+          ELSE CAST(0 AS bit)
+      END
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (29ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (Size = 4000), @p2='?' (Size = 4000), @p3='?' (DbType = DateTime2), @p4='?' (DbType = DateTime2), @p5='?' (Size = 4000), @p6='?' (Size = 4000), @p7='?' (DbType = DateTime2), @p8='?' (DbType = DateTime2), @p9='?' (Size = 4000), @p10='?' (Size = 4000), @p11='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      MERGE [Roles] USING (
+      VALUES (@p0, @p1, @p2, @p3, 0),
+      (@p4, @p5, @p6, @p7, 1),
+      (@p8, @p9, @p10, @p11, 2)) AS i ([CreatedAt], [Description], [Name], [UpdatedAt], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([CreatedAt], [Description], [Name], [UpdatedAt])
+      VALUES (i.[CreatedAt], i.[Description], i.[Name], i.[UpdatedAt])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (20ms) [Parameters=[@p0='?' (Size = 450), @p1='?' (DbType = DateTime2), @p2='?' (Size = 4000), @p3='?' (Size = 4000), @p4='?' (Size = 4000), @p5='?' (Size = 4000), @p6='?' (DbType = Int32), @p7='?' (DbType = DateTime2), @p8='?' (Size = 450), @p9='?' (DbType = DateTime2), @p10='?' (Size = 4000), @p11='?' (Size = 4000), @p12='?' (Size = 4000), @p13='?' (Size = 4000), @p14='?' (DbType = Int32), @p15='?' (DbType = DateTime2), @p16='?' (DbType = DateTime2), @p17='?' (Size = 4000), @p18='?' (Size = 4000), @p19='?' (DbType = Boolean), @p20='?' (Size = 4000), @p21='?' (DbType = Int32), @p22='?' (DbType = DateTime2), @p23='?' (Size = 450), @p24='?' (DbType = DateTime2), @p25='?' (Size = 4000), @p26='?' (Size = 4000), @p27='?' (DbType = Boolean), @p28='?' (Size = 4000), @p29='?' (DbType = Int32), @p30='?' (DbType = DateTime2), @p31='?' (Size = 450)], CommandType='Text', CommandTimeout='30']
+      SET NOCOUNT ON;
+      MERGE [Buildings] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, 0),
+      (@p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, 1)) AS i ([Code], [CreatedAt], [Description], [GenderPolicy], [ManagerName], [Name], [NumberOfFloors], [UpdatedAt], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([Code], [CreatedAt], [Description], [GenderPolicy], [ManagerName], [Name], [NumberOfFloors], [UpdatedAt])
+      VALUES (i.[Code], i.[CreatedAt], i.[Description], i.[GenderPolicy], i.[ManagerName], i.[Name], i.[NumberOfFloors], i.[UpdatedAt])
+      OUTPUT INSERTED.[Id], i._Position;
+      MERGE [Users] USING (
+      VALUES (@p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23, 0),
+      (@p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31, 1)) AS i ([CreatedAt], [Email], [FullName], [IsActive], [PasswordHash], [RoleId], [UpdatedAt], [Username], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([CreatedAt], [Email], [FullName], [IsActive], [PasswordHash], [RoleId], [UpdatedAt], [Username])
+      VALUES (i.[CreatedAt], i.[Email], i.[FullName], i.[IsActive], i.[PasswordHash], i.[RoleId], i.[UpdatedAt], i.[Username])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (16ms) [Parameters=[@p0='?' (DbType = Int32), @p1='?' (DbType = Int32), @p2='?' (DbType = DateTime2), @p3='?' (DbType = Int32), @p4='?' (DbType = Int32), @p5='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p6='?' (Size = 450), @p7='?' (Size = 4000), @p8='?' (Size = 4000), @p9='?' (DbType = DateTime2), @p10='?' (DbType = Int32), @p11='?' (DbType = Int32), @p12='?' (DbType = DateTime2), @p13='?' (DbType = Int32), @p14='?' (DbType = Int32), @p15='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p16='?' (Size = 450), @p17='?' (Size = 4000), @p18='?' (Size = 4000), @p19='?' (DbType = DateTime2), @p20='?' (DbType = Int32), @p21='?' (DbType = Int32), @p22='?' (DbType = DateTime2), @p23='?' (DbType = Int32), @p24='?' (DbType = Int32), @p25='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p26='?' (Size = 450), @p27='?' (Size = 4000), @p28='?' (Size = 4000), @p29='?' (DbType = DateTime2), @p30='?' (DbType = Int32), @p31='?' (DbType = Int32), @p32='?' (DbType = DateTime2), @p33='?' (DbType = Int32), @p34='?' (DbType = Int32), @p35='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p36='?' (Size = 450), @p37='?' (Size = 4000), @p38='?' (Size = 4000), @p39='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      MERGE [Rooms] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, 0),
+      (@p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, 1),
+      (@p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, @p28, @p29, 2),
+      (@p30, @p31, @p32, @p33, @p34, @p35, @p36, @p37, @p38, @p39, 3)) AS i ([BuildingId], [Capacity], [CreatedAt], [CurrentOccupancy], [FloorNumber], [PricePerMonth], [RoomNumber], [RoomType], [Status], [UpdatedAt], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([BuildingId], [Capacity], [CreatedAt], [CurrentOccupancy], [FloorNumber], [PricePerMonth], [RoomNumber], [RoomType], [Status], [UpdatedAt])
+      VALUES (i.[BuildingId], i.[Capacity], i.[CreatedAt], i.[CurrentOccupancy], i.[FloorNumber], i.[PricePerMonth], i.[RoomNumber], i.[RoomType], i.[Status], i.[UpdatedAt])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (19ms) [Parameters=[@p0='?' (Size = 4000), @p1='?' (Size = 4000), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (Size = 4000), @p5='?' (Size = 4000), @p6='?' (Size = 4000), @p7='?' (Size = 4000), @p8='?' (Size = 4000), @p9='?' (Size = 4000), @p10='?' (DbType = Int32), @p11='?' (Size = 4000), @p12='?' (Size = 450), @p13='?' (DbType = DateTime2), @p14='?' (Size = 4000), @p15='?' (Size = 4000), @p16='?' (DbType = DateTime2), @p17='?' (DbType = DateTime2), @p18='?' (Size = 4000), @p19='?' (Size = 4000), @p20='?' (Size = 4000), @p21='?' (Size = 4000), @p22='?' (Size = 4000), @p23='?' (Size = 4000), @p24='?' (DbType = Int32), @p25='?' (Size = 4000), @p26='?' (Size = 450), @p27='?' (DbType = DateTime2), @p28='?' (Size = 4000), @p29='?' (Size = 4000), @p30='?' (DbType = DateTime2), @p31='?' (DbType = DateTime2), @p32='?' (Size = 4000), @p33='?' (Size = 4000), @p34='?' (Size = 4000), @p35='?' (Size = 4000), @p36='?' (Size = 4000), @p37='?' (Size = 4000), @p38='?' (DbType = Int32), @p39='?' (Size = 4000), @p40='?' (Size = 450), @p41='?' (DbType = DateTime2), @p42='?' (Size = 4000), @p43='?' (Size = 4000), @p44='?' (DbType = DateTime2), @p45='?' (DbType = DateTime2), @p46='?' (Size = 4000), @p47='?' (Size = 4000), @p48='?' (Size = 4000), @p49='?' (Size = 4000), @p50='?' (Size = 4000), @p51='?' (Size = 4000), @p52='?' (DbType = Int32), @p53='?' (Size = 4000), @p54='?' (Size = 450), @p55='?' (DbType = DateTime2), @p56='?' (Size = 4000), @p57='?' (Size = 4000), @p58='?' (DbType = DateTime2), @p59='?' (DbType = DateTime2), @p60='?' (Size = 4000), @p61='?' (Size = 4000), @p62='?' (Size = 4000), @p63='?' (Size = 4000), @p64='?' (Size = 4000), @p65='?' (Size = 4000), @p66='?' (DbType = Int32), @p67='?' (Size = 4000), @p68='?' (Size = 450), @p69='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      MERGE [Students] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, 0),
+      (@p14, @p15, @p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, 1),
+      (@p28, @p29, @p30, @p31, @p32, @p33, @p34, @p35, @p36, @p37, @p38, @p39, @p40, @p41, 2),
+      (@p42, @p43, @p44, @p45, @p46, @p47, @p48, @p49, @p50, @p51, @p52, @p53, @p54, @p55, 3),
+      (@p56, @p57, @p58, @p59, @p60, @p61, @p62, @p63, @p64, @p65, @p66, @p67, @p68, @p69, 4)) AS i ([Address], [ClassName], [CreatedAt], [DateOfBirth], [Email], [EmergencyContact], [Faculty], [Gender], [Name], [Phone], [RoomId], [Status], [StudentCode], [UpdatedAt], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([Address], [ClassName], [CreatedAt], [DateOfBirth], [Email], [EmergencyContact], [Faculty], [Gender], [Name], [Phone], [RoomId], [Status], [StudentCode], [UpdatedAt])
+      VALUES (i.[Address], i.[ClassName], i.[CreatedAt], i.[DateOfBirth], i.[Email], i.[EmergencyContact], i.[Faculty], i.[Gender], i.[Name], i.[Phone], i.[RoomId], i.[Status], i.[StudentCode], i.[UpdatedAt])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (20ms) [Parameters=[@p0='?' (Size = 450), @p1='?' (DbType = DateTime2), @p2='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p3='?' (DbType = DateTime2), @p4='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p5='?' (DbType = Int32), @p6='?' (DbType = DateTime2), @p7='?' (Size = 4000), @p8='?' (DbType = Int32), @p9='?' (DbType = DateTime2), @p10='?' (Size = 450), @p11='?' (DbType = DateTime2), @p12='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p13='?' (DbType = DateTime2), @p14='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p15='?' (DbType = Int32), @p16='?' (DbType = DateTime2), @p17='?' (Size = 4000), @p18='?' (DbType = Int32), @p19='?' (DbType = DateTime2), @p20='?' (DbType = DateTime2), @p21='?' (DbType = DateTime2), @p22='?' (Size = 4000), @p23='?' (DbType = DateTime2), @p24='?' (DbType = Int32), @p25='?' (Size = 4000), @p26='?' (DbType = Int32), @p27='?' (DbType = DateTime2), @p28='?' (DbType = DateTime2), @p29='?' (DbType = DateTime2), @p30='?' (Size = 4000), @p31='?' (DbType = DateTime2), @p32='?' (DbType = Int32), @p33='?' (Size = 4000), @p34='?' (DbType = Int32), @p35='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET NOCOUNT ON;
+      MERGE [Contracts] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, 0),
+      (@p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, 1)) AS i ([ContractCode], [CreatedAt], [DepositAmount], [EndDate], [MonthlyFee], [RoomId], [StartDate], [Status], [StudentId], [UpdatedAt], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([ContractCode], [CreatedAt], [DepositAmount], [EndDate], [MonthlyFee], [RoomId], [StartDate], [Status], [StudentId], [UpdatedAt])
+      VALUES (i.[ContractCode], i.[CreatedAt], i.[DepositAmount], i.[EndDate], i.[MonthlyFee], i.[RoomId], i.[StartDate], i.[Status], i.[StudentId], i.[UpdatedAt])
+      OUTPUT INSERTED.[Id], i._Position;
+      MERGE [Registrations] USING (
+      VALUES (@p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, 0),
+      (@p28, @p29, @p30, @p31, @p32, @p33, @p34, @p35, 1)) AS i ([ApprovedDate], [CreatedAt], [Note], [RegistrationDate], [RoomId], [Status], [StudentId], [UpdatedAt], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([ApprovedDate], [CreatedAt], [Note], [RegistrationDate], [RoomId], [Status], [StudentId], [UpdatedAt])
+      VALUES (i.[ApprovedDate], i.[CreatedAt], i.[Note], i.[RegistrationDate], i.[RoomId], i.[Status], i.[StudentId], i.[UpdatedAt])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = Int32), @p3='?' (DbType = Int32), @p4='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p5='?' (DbType = Int32), @p6='?' (DbType = DateTime2), @p7='?' (DbType = Int32), @p8='?' (DbType = Int32), @p9='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p10='?' (DbType = DateTime2), @p11='?' (DbType = DateTime2), @p12='?' (DbType = Int32), @p13='?' (DbType = Int32), @p14='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p15='?' (DbType = Int32), @p16='?' (DbType = DateTime2), @p17='?' (DbType = Int32), @p18='?' (DbType = Int32), @p19='?' (Precision = 18) (Scale = 2) (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      MERGE [Utilities] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, 0),
+      (@p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, 1)) AS i ([BillingMonth], [CreatedAt], [ElectricityNew], [ElectricityOld], [ElectricityUnitPrice], [RoomId], [UpdatedAt], [WaterNew], [WaterOld], [WaterUnitPrice], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([BillingMonth], [CreatedAt], [ElectricityNew], [ElectricityOld], [ElectricityUnitPrice], [RoomId], [UpdatedAt], [WaterNew], [WaterOld], [WaterUnitPrice])
+      VALUES (i.[BillingMonth], i.[CreatedAt], i.[ElectricityNew], i.[ElectricityOld], i.[ElectricityUnitPrice], i.[RoomId], i.[UpdatedAt], i.[WaterNew], i.[WaterOld], i.[WaterUnitPrice])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (20ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p4='?' (Size = 450), @p5='?' (DbType = DateTime2), @p6='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p7='?' (DbType = Int32), @p8='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p9='?' (Size = 4000), @p10='?' (DbType = Int32), @p11='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p12='?' (DbType = DateTime2), @p13='?' (DbType = Int32), @p14='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p15='?' (DbType = DateTime2), @p16='?' (DbType = DateTime2), @p17='?' (DbType = DateTime2), @p18='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p19='?' (Size = 450), @p20='?' (DbType = DateTime2), @p21='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p22='?' (DbType = Int32), @p23='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p24='?' (Size = 4000), @p25='?' (DbType = Int32), @p26='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p27='?' (DbType = DateTime2), @p28='?' (DbType = Int32), @p29='?' (Precision = 18) (Scale = 2) (DbType = Decimal)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      MERGE [Invoices] USING (
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, 0),
+      (@p15, @p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, @p28, @p29, 1)) AS i ([BillingMonth], [CreatedAt], [DueDate], [ElectricityFee], [InvoiceCode], [PaidDate], [RoomFee], [RoomId], [ServiceFee], [Status], [StudentId], [Total], [UpdatedAt], [UtilityId], [WaterFee], _Position) ON 1=0
+      WHEN NOT MATCHED THEN
+      INSERT ([BillingMonth], [CreatedAt], [DueDate], [ElectricityFee], [InvoiceCode], [PaidDate], [RoomFee], [RoomId], [ServiceFee], [Status], [StudentId], [Total], [UpdatedAt], [UtilityId], [WaterFee])
+      VALUES (i.[BillingMonth], i.[CreatedAt], i.[DueDate], i.[ElectricityFee], i.[InvoiceCode], i.[PaidDate], i.[RoomFee], i.[RoomId], i.[ServiceFee], i.[Status], i.[StudentId], i.[Total], i.[UpdatedAt], i.[UtilityId], i.[WaterFee])
+      OUTPUT INSERTED.[Id], i._Position;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(1) [r].[Id], [r].[BuildingId], [r].[Capacity], [r].[CreatedAt], [r].[CurrentOccupancy], [r].[FloorNumber], [r].[PricePerMonth], [r].[RoomNumber], [r].[RoomType], [r].[Status], [r].[UpdatedAt]
+      FROM [Rooms] AS [r]
+      WHERE [r].[Id] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Students] AS [s]
+      WHERE [s].[RoomId] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(1) [r].[Id], [r].[BuildingId], [r].[Capacity], [r].[CreatedAt], [r].[CurrentOccupancy], [r].[FloorNumber], [r].[PricePerMonth], [r].[RoomNumber], [r].[RoomType], [r].[Status], [r].[UpdatedAt]
+      FROM [Rooms] AS [r]
+      WHERE [r].[Id] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Students] AS [s]
+      WHERE [s].[RoomId] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(1) [r].[Id], [r].[BuildingId], [r].[Capacity], [r].[CreatedAt], [r].[CurrentOccupancy], [r].[FloorNumber], [r].[PricePerMonth], [r].[RoomNumber], [r].[RoomType], [r].[Status], [r].[UpdatedAt]
+      FROM [Rooms] AS [r]
+      WHERE [r].[Id] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Students] AS [s]
+      WHERE [s].[RoomId] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(1) [r].[Id], [r].[BuildingId], [r].[Capacity], [r].[CreatedAt], [r].[CurrentOccupancy], [r].[FloorNumber], [r].[PricePerMonth], [r].[RoomNumber], [r].[RoomType], [r].[Status], [r].[UpdatedAt]
+      FROM [Rooms] AS [r]
+      WHERE [r].[Id] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__roomId_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Students] AS [s]
+      WHERE [s].[RoomId] = @__roomId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[@p1='?' (DbType = Int32), @p0='?' (DbType = DateTime2), @p5='?' (DbType = Int32), @p2='?' (DbType = Int32), @p3='?' (Size = 4000), @p4='?' (DbType = DateTime2), @p7='?' (DbType = Int32), @p6='?' (DbType = DateTime2), @p9='?' (DbType = Int32), @p8='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET NOCOUNT ON;
+      UPDATE [Rooms] SET [UpdatedAt] = @p0
+      OUTPUT 1
+      WHERE [Id] = @p1;
+      UPDATE [Rooms] SET [CurrentOccupancy] = @p2, [Status] = @p3, [UpdatedAt] = @p4
+      OUTPUT 1
+      WHERE [Id] = @p5;
+      UPDATE [Rooms] SET [UpdatedAt] = @p6
+      OUTPUT 1
+      WHERE [Id] = @p7;
+      UPDATE [Rooms] SET [UpdatedAt] = @p8
+      OUTPUT 1
+      WHERE [Id] = @p9;
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://127.0.0.1:5101
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\Minhhoangg\Desktop\CODE\project\DormitoryManagement\DormitoryManagement
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [i].[Id], [i].[BillingMonth], [i].[CreatedAt], [i].[DueDate], [i].[ElectricityFee], [i].[InvoiceCode], [i].[PaidDate], [i].[RoomFee], [i].[RoomId], [i].[ServiceFee], [i].[Status], [i].[StudentId], [i].[Total], [i].[UpdatedAt], [i].[UtilityId], [i].[WaterFee]
+      FROM [Invoices] AS [i]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Rooms] AS [r]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Rooms] AS [r]
+      WHERE [r].[CurrentOccupancy] > 0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Rooms] AS [r]
+      WHERE [r].[CurrentOccupancy] >= [r].[Capacity]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Students] AS [s]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*)
+      FROM [Contracts] AS [c]
+      WHERE [c].[Status] = N'Active'
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (20ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [b].[Name] AS [building], COALESCE(SUM([r].[CurrentOccupancy]), 0) AS [occupied], COALESCE(SUM([r].[Capacity]), 0) AS [capacity]
+      FROM [Rooms] AS [r]
+      INNER JOIN [Buildings] AS [b] ON [r].[BuildingId] = [b].[Id]
+      GROUP BY [b].[Name]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[@__p_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [t].[Id] AS [id], [s].[Name] AS [student], [r0].[RoomNumber] AS [room], [t].[Status] AS [status], [t].[CreatedAt] AS [createdAt]
+      FROM (
+          SELECT TOP(@__p_0) [r].[Id], [r].[CreatedAt], [r].[RoomId], [r].[Status], [r].[StudentId]
+          FROM [Registrations] AS [r]
+          ORDER BY [r].[CreatedAt] DESC
+      ) AS [t]
+      INNER JOIN [Students] AS [s] ON [t].[StudentId] = [s].[Id]
+      INNER JOIN [Rooms] AS [r0] ON [t].[RoomId] = [r0].[Id]
+      ORDER BY [t].[CreatedAt] DESC
