@@ -19,12 +19,82 @@ export function localizeValue(value) {
   return VALUE_LABELS[value] ?? value
 }
 
+export function repairText(value) {
+  if (typeof value !== 'string' || value.length === 0) {
+    return value
+  }
+
+  try {
+    return decodeURIComponent(escape(value))
+  } catch {
+    return value
+  }
+}
+
 export function renderCell(value) {
   if (typeof value === 'boolean') return value ? 'Có' : 'Không'
   if (typeof value === 'number' && value > 100000) return currencyFormat.format(value)
   if (typeof value === 'string') return localizeValue(value)
   if (String(value).includes('T') && !Number.isNaN(Date.parse(value))) return shortDate(value)
   return value ?? '-'
+}
+
+export function isCurrencyField(field) {
+  const fieldName = field.name.toLowerCase()
+  return ['amount', 'fee', 'price', 'total', 'deposit'].some((keyword) => fieldName.includes(keyword))
+}
+
+export function parseNumberInput(value) {
+  if (typeof value === 'number') return value
+  const normalized = String(value ?? '').replace(/[^\d.-]/g, '')
+  return normalized === '' || normalized === '-' ? '' : Number(normalized)
+}
+
+export function formatCurrencyInput(value) {
+  const parsedValue = parseNumberInput(value)
+  return parsedValue === '' || Number.isNaN(parsedValue) ? '' : numberFormat.format(parsedValue)
+}
+
+export function validatePayload(fields, values) {
+  const errors = {}
+
+  fields.forEach((field) => {
+    const value = values[field.name]
+    const isEmpty = value === '' || value === null || value === undefined
+    const requiredTextFields = ['code', 'name', 'studentCode', 'contractCode', 'invoiceCode', 'username', 'passwordHash', 'fullName', 'email']
+    const isRequiredField =
+      field.required === true ||
+      field.type === 'select' ||
+      field.type === 'lookup' ||
+      field.type === 'lookupCode' ||
+      field.type === 'date' ||
+      (field.type === 'number' && !field.allowEmpty) ||
+      requiredTextFields.includes(field.name)
+
+    if (!field.allowEmpty && field.type !== 'checkbox' && isRequiredField && isEmpty) {
+      errors[field.name] = `${field.label} là bắt buộc.`
+      return
+    }
+
+    if (field.type === 'email' && !isEmpty && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      errors[field.name] = 'Email không đúng định dạng.'
+      return
+    }
+
+    if (field.type === 'number' && !isEmpty) {
+      const numberValue = parseNumberInput(value)
+      if (Number.isNaN(numberValue)) {
+        errors[field.name] = `${field.label} phải là số.`
+        return
+      }
+
+      if (numberValue < 0) {
+        errors[field.name] = `${field.label} không được âm.`
+      }
+    }
+  })
+
+  return errors
 }
 
 export function normalizePayload(fields, values) {
@@ -34,7 +104,7 @@ export function normalizePayload(fields, values) {
     const value = values[field.name]
 
     if (field.type === 'number') {
-      payload[field.name] = value === '' ? 0 : Number(value)
+      payload[field.name] = value === '' ? 0 : Number(parseNumberInput(value))
       return
     }
 

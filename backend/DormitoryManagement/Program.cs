@@ -1,6 +1,6 @@
 using Dormitory.Models.DataContexts;
+using DormitoryManagement.Services.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using DormitoryManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +11,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    var databaseProvider = builder.Configuration["DatabaseProvider"];
+    if (string.Equals(databaseProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection"));
+        return;
+    }
+
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 
 var app = builder.Build();
 

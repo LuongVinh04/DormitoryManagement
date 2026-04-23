@@ -53,6 +53,31 @@ export function MetricCard({ label, value, accent, large = false }) {
   )
 }
 
+export function SectionBanner({ eyebrow, title, description, stats = [], actions = null }) {
+  return (
+    <section className="section-banner">
+      <div className="section-banner-copy">
+        <span className="eyebrow">{eyebrow}</span>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      <div className="section-banner-side">
+        {stats.length > 0 ? (
+          <div className="section-banner-stats">
+            {stats.map((stat) => (
+              <article key={stat.label} className="section-stat-card">
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+              </article>
+            ))}
+          </div>
+        ) : null}
+        {actions ? <div className="section-banner-actions">{actions}</div> : null}
+      </div>
+    </section>
+  )
+}
+
 export function SummaryBlock({ label, value }) {
   return (
     <div className="summary-block">
@@ -110,12 +135,19 @@ export function CrudPanel({ entityKey, rows, onCreate, onEdit, onDelete, extraRo
   return (
     <Panel title={config.title} description={config.description} {...panelProps}>
       <div className="panel-toolbar">
-        <input
-          className="search-input"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Tìm nhanh theo từ khóa..."
-        />
+        <div className="search-stack">
+          <input
+            className="search-input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Tìm nhanh theo từ khóa..."
+          />
+          <span className="toolbar-meta">
+            {query.trim()
+              ? `Hiển thị ${filteredRows.length}/${rows.length} bản ghi`
+              : `${rows.length} bản ghi`}
+          </span>
+        </div>
         <button className="primary-button" onClick={() => onCreate(entityKey)}>Thêm mới</button>
       </div>
 
@@ -128,7 +160,17 @@ export function CrudPanel({ entityKey, rows, onCreate, onEdit, onDelete, extraRo
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map((item) => {
+            {filteredRows.length === 0 ? (
+              <tr>
+                <td colSpan={config.columns.length + 1}>
+                  <div className="empty-state">
+                    {query.trim()
+                      ? 'Không tìm thấy bản ghi phù hợp với từ khóa hiện tại.'
+                      : 'Chưa có dữ liệu trong nhóm chức năng này.'}
+                  </div>
+                </td>
+              </tr>
+            ) : filteredRows.map((item) => {
               const actions = extraRowActions(item).filter(Boolean)
 
               return (
@@ -138,7 +180,7 @@ export function CrudPanel({ entityKey, rows, onCreate, onEdit, onDelete, extraRo
                       {renderCell(item[key])}
                     </td>
                   ))}
-                  <td data-label={'Thao t\u00e1c'}>
+                  <td data-label="Thao tác">
                     <div className="action-row">
                       {actions.map((action) => (
                         <button

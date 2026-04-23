@@ -1,4 +1,9 @@
+import { buildEnumOptions, buildValueLabels } from './enums'
+
 export const API_ENDPOINTS = {
+  roomCategories: '/api/catalog/room-categories',
+  roomZones: '/api/catalog/room-zones',
+  paymentMethods: '/api/catalog/payment-methods',
   buildings: '/api/facilities/buildings',
   rooms: '/api/facilities/rooms',
   students: '/api/people/students',
@@ -13,101 +18,115 @@ export const API_ENDPOINTS = {
 }
 
 export const NAVIGATION = [
-  { key: 'overview', label: 'Tổng quan' },
-  { key: 'operations', label: 'Điều phối phòng' },
-  { key: 'facilities', label: 'Cơ sở vật chất' },
-  { key: 'students', label: 'Sinh viên' },
-  { key: 'finance', label: 'Tài chính' },
-  { key: 'admin', label: 'Quản trị' },
+  { key: 'overview', path: '/overview', label: 'Tổng quan' },
+  { key: 'catalog', path: '/catalog', label: 'Danh mục' },
+  { key: 'operations', path: '/operations', label: 'Điều phối phòng' },
+  { key: 'facilities', path: '/facilities', label: 'Cơ sở vật chất' },
+  { key: 'students', path: '/students', label: 'Sinh viên' },
+  { key: 'finance', path: '/finance', label: 'Tài chính' },
+  { key: 'admin', path: '/admin', label: 'Quản trị' },
 ]
 
-export const VALUE_LABELS = {
-  Male: 'Nam',
-  Female: 'Nữ',
-  Mixed: 'Hỗn hợp',
-  Standard: 'Tiêu chuẩn',
-  Premium: 'Cao cấp',
-  Available: 'Còn trống',
-  Occupied: 'Đang sử dụng',
-  Full: 'Đã đầy',
-  Maintenance: 'Bảo trì',
-  Active: 'Hiệu lực',
-  PendingMoveIn: 'Chờ nhận phòng',
-  Waiting: 'Chờ xếp phòng',
-  Inactive: 'Ngừng ở',
-  Pending: 'Chờ duyệt',
-  Approved: 'Đã duyệt',
-  Rejected: 'Từ chối',
-  Expired: 'Hết hạn',
-  Cancelled: 'Đã hủy',
-  Unpaid: 'Chưa thanh toán',
-  Paid: 'Đã thanh toán',
-  PartiallyPaid: 'Thanh toán một phần',
-  Late: 'Quá hạn',
-  Cash: 'Tiền mặt',
-  Transfer: 'Chuyển khoản',
-  Other: 'Khác',
-}
+export const VALUE_LABELS = buildValueLabels()
 
-export const GENDER_POLICY_OPTIONS = [
-  { value: 'Male', label: 'Khu nam' },
-  { value: 'Female', label: 'Khu nữ' },
-  { value: 'Mixed', label: 'Khu hỗn hợp' },
-]
+export const GENDER_POLICY_OPTIONS = buildEnumOptions('genderPolicy')
 
-export const ROOM_TYPE_OPTIONS = [
-  { value: 'Standard', label: 'Tiêu chuẩn' },
-  { value: 'Premium', label: 'Cao cấp' },
-  { value: 'VIP', label: 'VIP' },
-]
+export const ROOM_TYPE_OPTIONS = buildEnumOptions('roomType')
 
-export const ROOM_STATUS_OPTIONS = [
-  { value: 'Available', label: 'Còn trống' },
-  { value: 'Occupied', label: 'Đang sử dụng' },
-  { value: 'Full', label: 'Đã đầy' },
-  { value: 'Maintenance', label: 'Bảo trì' },
-]
+export const ROOM_STATUS_OPTIONS = buildEnumOptions('roomStatus')
 
-export const GENDER_OPTIONS = [
-  { value: 'Male', label: 'Nam' },
-  { value: 'Female', label: 'Nữ' },
-  { value: 'Other', label: 'Khác' },
-]
+export const GENDER_OPTIONS = buildEnumOptions('gender')
 
-export const STUDENT_STATUS_OPTIONS = [
-  { value: 'Active', label: 'Đang ở' },
-  { value: 'PendingMoveIn', label: 'Chờ nhận phòng' },
-  { value: 'Waiting', label: 'Chờ xếp phòng' },
-  { value: 'Pending', label: 'Chờ duyệt' },
-  { value: 'Inactive', label: 'Ngừng ở' },
-]
+export const STUDENT_STATUS_OPTIONS = buildEnumOptions('studentStatus')
 
-export const REGISTRATION_STATUS_OPTIONS = [
-  { value: 'Pending', label: 'Chờ duyệt' },
-  { value: 'Approved', label: 'Đã duyệt' },
-  { value: 'Rejected', label: 'Từ chối' },
-]
+export const REGISTRATION_STATUS_OPTIONS = buildEnumOptions('registrationStatus')
 
-export const CONTRACT_STATUS_OPTIONS = [
-  { value: 'Active', label: 'Hiệu lực' },
-  { value: 'Expired', label: 'Hết hạn' },
-  { value: 'Cancelled', label: 'Đã hủy' },
-]
+export const CONTRACT_STATUS_OPTIONS = buildEnumOptions('contractStatus')
 
-export const INVOICE_STATUS_OPTIONS = [
-  { value: 'Unpaid', label: 'Chưa thanh toán' },
-  { value: 'Paid', label: 'Đã thanh toán' },
-  { value: 'PartiallyPaid', label: 'Thanh toán một phần' },
-  { value: 'Late', label: 'Quá hạn' },
-]
+export const INVOICE_STATUS_OPTIONS = buildEnumOptions('invoiceStatus')
 
-export const PAYMENT_METHOD_OPTIONS = [
-  { value: 'Cash', label: 'Tiền mặt' },
-  { value: 'Transfer', label: 'Chuyển khoản' },
-  { value: 'Other', label: 'Khác' },
-]
+export const PAYMENT_METHOD_OPTIONS = buildEnumOptions('paymentMethod')
 
 export const ENTITY_CONFIGS = {
+  roomCategories: {
+    title: 'Danh mục loại phòng',
+    description: 'Tạo trước các loại phòng thực tế như phòng đơn, phòng đôi, giường tầng kèm sức chứa, giá và bộ phí mặc định.',
+    columns: [
+      ['code', 'Mã'],
+      ['name', 'Loại phòng'],
+      ['bedLayout', 'Bố trí giường'],
+      ['defaultCapacity', 'Sức chứa'],
+      ['baseMonthlyFee', 'Tiền phòng'],
+      ['depositAmount', 'Tiền cọc'],
+      ['serviceFee', 'Phí dịch vụ'],
+      ['internetFee', 'Internet'],
+      ['isActive', 'Hoạt động'],
+    ],
+    fields: [
+      { name: 'code', label: 'Mã loại phòng', type: 'text' },
+      { name: 'name', label: 'Tên loại phòng', type: 'text' },
+      { name: 'bedLayout', label: 'Bố trí giường', type: 'text' },
+      { name: 'defaultCapacity', label: 'Sức chứa mặc định', type: 'number' },
+      { name: 'baseMonthlyFee', label: 'Tiền phòng mặc định', type: 'number' },
+      { name: 'depositAmount', label: 'Tiền cọc', type: 'number' },
+      { name: 'hygieneFee', label: 'Phí vệ sinh', type: 'number' },
+      { name: 'serviceFee', label: 'Phí dịch vụ', type: 'number' },
+      { name: 'internetFee', label: 'Phí internet', type: 'number' },
+      { name: 'electricityUnitPrice', label: 'Đơn giá điện', type: 'number' },
+      { name: 'waterUnitPrice', label: 'Đơn giá nước', type: 'number' },
+      { name: 'description', label: 'Mô tả', type: 'textarea', allowEmpty: true },
+      { name: 'isActive', label: 'Đang sử dụng', type: 'checkbox' },
+    ],
+  },
+  roomZones: {
+    title: 'Danh mục phân khu phòng',
+    description: 'Chia nhỏ tòa/phòng theo phân khu, tầng, chính sách giới tính và người phụ trách để điều phối sát thực tế.',
+    columns: [
+      ['code', 'Mã'],
+      ['name', 'Phân khu'],
+      ['buildingName', 'Tòa nhà'],
+      ['genderPolicy', 'Chính sách'],
+      ['floorFrom', 'Từ tầng'],
+      ['floorTo', 'Đến tầng'],
+      ['managerName', 'Phụ trách'],
+      ['roomCount', 'Số phòng'],
+      ['isActive', 'Hoạt động'],
+    ],
+    fields: [
+      { name: 'code', label: 'Mã phân khu', type: 'text' },
+      { name: 'name', label: 'Tên phân khu', type: 'text' },
+      { name: 'buildingId', label: 'Tòa nhà', type: 'lookup', lookup: 'buildings', allowEmpty: true, optionLabel: (item) => `${item.code} - ${item.name}` },
+      { name: 'genderPolicy', label: 'Chính sách giới tính', type: 'select', options: GENDER_POLICY_OPTIONS },
+      { name: 'floorFrom', label: 'Từ tầng', type: 'number' },
+      { name: 'floorTo', label: 'Đến tầng', type: 'number' },
+      { name: 'managerName', label: 'Người phụ trách', type: 'text', allowEmpty: true },
+      { name: 'description', label: 'Mô tả', type: 'textarea', allowEmpty: true },
+      { name: 'isActive', label: 'Đang sử dụng', type: 'checkbox' },
+    ],
+  },
+  paymentMethods: {
+    title: 'Danh mục hình thức thanh toán',
+    description: 'Quản lý tiền mặt, chuyển khoản, POS hoặc các kênh thu khác kèm thông tin tài khoản và phí xử lý.',
+    columns: [
+      ['code', 'Mã'],
+      ['name', 'Hình thức'],
+      ['accountName', 'Chủ tài khoản'],
+      ['accountNumber', 'Số tài khoản'],
+      ['bankName', 'Ngân hàng'],
+      ['processingFee', 'Phí xử lý'],
+      ['isActive', 'Hoạt động'],
+    ],
+    fields: [
+      { name: 'code', label: 'Mã hình thức', type: 'text' },
+      { name: 'name', label: 'Tên hình thức', type: 'text' },
+      { name: 'accountName', label: 'Chủ tài khoản', type: 'text', allowEmpty: true },
+      { name: 'accountNumber', label: 'Số tài khoản', type: 'text', allowEmpty: true },
+      { name: 'bankName', label: 'Ngân hàng', type: 'text', allowEmpty: true },
+      { name: 'processingFee', label: 'Phí xử lý', type: 'number' },
+      { name: 'description', label: 'Mô tả', type: 'textarea', allowEmpty: true },
+      { name: 'isActive', label: 'Đang sử dụng', type: 'checkbox' },
+    ],
+  },
   buildings: {
     title: 'Danh sách tòa nhà',
     description: 'Quản lý khu nhà, chính sách giới tính và người phụ trách.',
@@ -135,8 +154,9 @@ export const ENTITY_CONFIGS = {
     columns: [
       ['roomNumber', 'Phòng'],
       ['buildingName', 'Tòa nhà'],
+      ['roomCategoryName', 'Loại phòng'],
+      ['roomZoneName', 'Phân khu'],
       ['floorNumber', 'Tầng'],
-      ['roomType', 'Loại phòng'],
       ['capacity', 'Sức chứa'],
       ['currentOccupancy', 'Đang ở'],
       ['availableSlots', 'Còn trống'],
@@ -145,8 +165,9 @@ export const ENTITY_CONFIGS = {
     fields: [
       { name: 'roomNumber', label: 'Số phòng', type: 'text' },
       { name: 'buildingId', label: 'Tòa nhà', type: 'lookup', lookup: 'buildings', optionLabel: (item) => `${item.code} - ${item.name}` },
+      { name: 'roomCategoryId', label: 'Loại phòng', type: 'lookup', lookup: 'roomCategories', optionLabel: (item) => `${item.name} - ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.baseMonthlyFee)}` },
+      { name: 'roomZoneId', label: 'Phân khu', type: 'lookup', lookup: 'roomZones', allowEmpty: true, optionLabel: (item) => `${item.code} - ${item.name}` },
       { name: 'floorNumber', label: 'Tầng', type: 'number' },
-      { name: 'roomType', label: 'Loại phòng', type: 'select', options: ROOM_TYPE_OPTIONS },
       { name: 'capacity', label: 'Sức chứa', type: 'number' },
       { name: 'pricePerMonth', label: 'Giá theo tháng', type: 'number' },
       { name: 'status', label: 'Trạng thái', type: 'select', options: ROOM_STATUS_OPTIONS },
@@ -301,7 +322,7 @@ export const ENTITY_CONFIGS = {
       { name: 'dueDate', label: 'Hạn thu', type: 'date' },
       { name: 'paidDate', label: 'Ngày thanh toán', type: 'date', allowEmpty: true },
       { name: 'status', label: 'Trạng thái', type: 'select', options: INVOICE_STATUS_OPTIONS },
-      { name: 'paymentMethod', label: 'Hình thức thu', type: 'select', options: PAYMENT_METHOD_OPTIONS, allowEmpty: true },
+      { name: 'paymentMethod', label: 'Hình thức thu', type: 'lookupCode', lookup: 'paymentMethods', allowEmpty: true, optionLabel: (item) => `${item.name}${item.processingFee ? ` - phí ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.processingFee)}` : ''}` },
       { name: 'recordedBy', label: 'Người thu', type: 'text' },
       { name: 'paymentNote', label: 'Ghi chú thu tiền', type: 'textarea' },
     ],

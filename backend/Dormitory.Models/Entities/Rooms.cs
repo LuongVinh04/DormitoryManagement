@@ -10,6 +10,8 @@ namespace Dormitory.Models.Entities
     {
         public string RoomNumber { get; set; } = string.Empty;
         public int BuildingId { get; set; }
+        public int? RoomCategoryId { get; set; }
+        public int? RoomZoneId { get; set; }
         public int FloorNumber { get; set; }
         public string RoomType { get; set; } = "Standard";
         public int Capacity { get; set; }
@@ -18,6 +20,8 @@ namespace Dormitory.Models.Entities
         public string Status { get; set; } = "Available";
 
         public Buildings? Building { get; set; }
+        public RoomCategory? RoomCategory { get; set; }
+        public RoomZone? RoomZone { get; set; }
         public ICollection<Students> Students { get; set; } = new List<Students>();
         public ICollection<Registrations> Registrations { get; set; } = new List<Registrations>();
         public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
