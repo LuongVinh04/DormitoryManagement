@@ -263,8 +263,10 @@ export const ENTITY_CONFIGS = {
       { name: 'electricityNew', label: 'Điện mới', type: 'number' },
       { name: 'waterOld', label: 'Nước cũ', type: 'number' },
       { name: 'waterNew', label: 'Nước mới', type: 'number' },
-      { name: 'electricityUnitPrice', label: 'Đơn giá điện', type: 'number' },
-      { name: 'waterUnitPrice', label: 'Đơn giá nước', type: 'number' },
+      { name: 'electricityUnitPrice', label: 'Đơn giá điện / 1 số', type: 'number' },
+      { name: 'waterUnitPrice', label: 'Đơn giá nước / 1 số', type: 'number' },
+      { name: 'electricityEvidenceUrl', label: 'Ảnh minh chứng điện (URL)', type: 'text', allowEmpty: true },
+      { name: 'waterEvidenceUrl', label: 'Ảnh minh chứng nước (URL)', type: 'text', allowEmpty: true },
     ],
   },
   roomFeeProfiles: {

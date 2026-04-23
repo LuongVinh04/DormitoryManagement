@@ -66,5 +66,17 @@ function renderInputField(field, value, lookupItems, onChange) {
     return <div className="checkbox-row"><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(field.name, event.target.checked)} /><span>Kích hoạt tài khoản</span></div>
   }
 
+  if (field.name.endsWith('Url') && field.type === 'text') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input type="text" value={value || ''} onChange={(event) => onChange(field.name, event.target.value)} style={{ flex: 1 }} />
+          {value && <a href={value} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: '#0066cc', textDecoration: 'none', whiteSpace: 'nowrap' }}>Xem ảnh ↗</a>}
+        </div>
+        <small style={{ color: '#666', fontSize: '0.8rem' }}>Dán đường dẫn lưu trữ ảnh minh chứng (Google Drive, Imgur, ...) vào đây.</small>
+      </div>
+    )
+  }
+
   return <input type={field.type} value={value} onChange={(event) => onChange(field.name, event.target.value)} />
 }

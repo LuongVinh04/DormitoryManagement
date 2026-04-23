@@ -19,6 +19,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-y: scroll;
 }
 
 button,
@@ -30,4 +31,8 @@ textarea {
 
 #root {
   min-height: 100vh;
+}
+
+html {
+  scroll-behavior: smooth;
 }

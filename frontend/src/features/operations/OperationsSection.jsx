@@ -105,7 +105,7 @@ export function OperationsSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={getPanelProps('operations-registrations')}
+        panelProps={{ ...getPanelProps('operations-registrations'), panelId: 'panel-operations-registrations' }}
         extraRowActions={(item) => [
           item.status === 'Pending' ? { label: 'Duyệt', kind: 'approve', onClick: () => executeAction(() => fetch(`/api/operations/registrations/${item.id}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'Duyệt từ giao diện vận hành.' }) }), 'Đã duyệt đăng ký và xếp phòng.') } : null,
           item.status === 'Pending' ? { label: 'Từ chối', kind: 'danger', onClick: () => executeAction(() => fetch(`/api/operations/registrations/${item.id}/reject`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'Từ chối từ giao diện vận hành.' }) }), 'Đã từ chối đăng ký.') } : null,

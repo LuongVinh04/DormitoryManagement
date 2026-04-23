@@ -1,0 +1,24 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260424004621
+Username: DESKTOP-CCTHMN9\Minhhoangg
+RunAs User: DESKTOP-CCTHMN9\Minhhoangg
+Configuration Name: 
+Machine: DESKTOP-CCTHMN9 (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -c Start-Transcript -Path 'C:\Users\Minhhoangg\Desktop\CODE\project\backend\DormitoryManagement\bl.txt'; dotnet build; Stop-Transcript
+Process ID: 17492
+PSVersion: 5.1.22621.2428
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.22621.2428
+BuildVersion: 10.0.22621.2428
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is C:\Users\Minhhoangg\Desktop\CODE\project\backend\DormitoryManagement\bl.txt
+
+**********************
+Windows PowerShell transcript end
+End time: 20260424004623
+**********************

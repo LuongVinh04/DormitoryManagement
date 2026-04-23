@@ -1,4 +1,4 @@
-﻿using Dormitory.Models.Entities;
+using Dormitory.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dormitory.Models.DataContexts
@@ -9,6 +9,9 @@ namespace Dormitory.Models.DataContexts
 
         public DbSet<Users> Users { get; set; }
         public DbSet<Roles> Roles { get; set; }
+        public DbSet<Permissions> Permissions { get; set; }
+        public DbSet<RolePermissions> RolePermissions { get; set; }
+        public DbSet<UserPermissions> UserPermissions { get; set; }
         public DbSet<Buildings> Buildings { get; set; }
         public DbSet<RoomCategory> RoomCategories { get; set; }
         public DbSet<RoomZone> RoomZones { get; set; }
@@ -52,6 +55,18 @@ namespace Dormitory.Models.DataContexts
 
             modelBuilder.Entity<Users>()
                 .HasIndex(x => x.Username)
+                .IsUnique();
+
+            modelBuilder.Entity<Permissions>()
+                .HasIndex(x => x.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<RolePermissions>()
+                .HasIndex(x => new { x.RoleId, x.PermissionId })
+                .IsUnique();
+
+            modelBuilder.Entity<UserPermissions>()
+                .HasIndex(x => new { x.UserId, x.PermissionId })
                 .IsUnique();
 
             modelBuilder.Entity<Invoices>()
@@ -171,6 +186,30 @@ namespace Dormitory.Models.DataContexts
                 .WithMany(x => x.Users)
                 .HasForeignKey(x => x.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RolePermissions>()
+                .HasOne(x => x.Role)
+                .WithMany(x => x.RolePermissions)
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RolePermissions>()
+                .HasOne(x => x.Permission)
+                .WithMany(x => x.RolePermissions)
+                .HasForeignKey(x => x.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserPermissions>()
+                .HasOne(x => x.User)
+                .WithMany(x => x.UserPermissions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserPermissions>()
+                .HasOne(x => x.Permission)
+                .WithMany(x => x.UserPermissions)
+                .HasForeignKey(x => x.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
