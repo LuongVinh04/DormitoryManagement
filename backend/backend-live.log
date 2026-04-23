@@ -1,0 +1,404 @@
+Using launch settings from backend\DormitoryManagement\Properties\launchSettings.json...
+Building...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT COUNT(*) FROM "sqlite_master" WHERE "type" = 'table' AND "rootpage" IS NOT NULL;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE IF NOT EXISTS "RoomFeeProfiles"
+(
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_RoomFeeProfiles" PRIMARY KEY AUTOINCREMENT,
+    "RoomId" INTEGER NOT NULL,
+    "MonthlyRoomFee" TEXT NOT NULL DEFAULT 0,
+    "ElectricityUnitPrice" TEXT NOT NULL DEFAULT 0,
+    "WaterUnitPrice" TEXT NOT NULL DEFAULT 0,
+    "HygieneFee" TEXT NOT NULL DEFAULT 0,
+    "ServiceFee" TEXT NOT NULL DEFAULT 0,
+    "InternetFee" TEXT NOT NULL DEFAULT 0,
+    "OtherFee" TEXT NOT NULL DEFAULT 0,
+    "OtherFeeName" TEXT NOT NULL DEFAULT '',
+    "BillingCycleDay" INTEGER NOT NULL DEFAULT 10,
+    "Notes" TEXT NOT NULL DEFAULT '',
+    "CreatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TEXT NULL,
+    CONSTRAINT "FK_RoomFeeProfiles_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_RoomFeeProfiles_RoomId" ON "RoomFeeProfiles" ("RoomId");
+
+CREATE TABLE IF NOT EXISTS "RoomFinanceRecords"
+(
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_RoomFinanceRecords" PRIMARY KEY AUTOINCREMENT,
+    "RoomId" INTEGER NOT NULL,
+    "UtilityId" INTEGER NULL,
+    "BillingMonth" TEXT NOT NULL,
+    "MonthlyRoomFee" TEXT NOT NULL DEFAULT 0,
+    "ElectricityFee" TEXT NOT NULL DEFAULT 0,
+    "WaterFee" TEXT NOT NULL DEFAULT 0,
+    "HygieneFee" TEXT NOT NULL DEFAULT 0,
+    "ServiceFee" TEXT NOT NULL DEFAULT 0,
+    "InternetFee" TEXT NOT NULL DEFAULT 0,
+    "OtherFee" TEXT NOT NULL DEFAULT 0,
+    "Total" TEXT NOT NULL DEFAULT 0,
+    "PaidAmount" TEXT NOT NULL DEFAULT 0,
+    "Status" TEXT NOT NULL DEFAULT 'Unpaid',
+    "DueDate" TEXT NOT NULL,
+    "PaidDate" TEXT NULL,
+    "PaymentMethod" TEXT NOT NULL DEFAULT '',
+    "PaymentNote" TEXT NOT NULL DEFAULT '',
+    "RecordedBy" TEXT NOT NULL DEFAULT '',
+    "CreatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TEXT NULL,
+    CONSTRAINT "FK_RoomFinanceRecords_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_RoomFinanceRecords_Utilities_UtilityId" FOREIGN KEY ("UtilityId") REFERENCES "Utilities" ("Id") ON DELETE NO ACTION
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_RoomFinanceRecords_RoomId_BillingMonth" ON "RoomFinanceRecords" ("RoomId", "BillingMonth");
+
+CREATE TABLE IF NOT EXISTS "RoomCategories"
+(
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_RoomCategories" PRIMARY KEY AUTOINCREMENT,
+    "Code" TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
+    "BedLayout" TEXT NOT NULL DEFAULT '',
+    "DefaultCapacity" INTEGER NOT NULL DEFAULT 0,
+    "BaseMonthlyFee" TEXT NOT NULL DEFAULT 0,
+    "DepositAmount" TEXT NOT NULL DEFAULT 0,
+    "HygieneFee" TEXT NOT NULL DEFAULT 0,
+    "ServiceFee" TEXT NOT NULL DEFAULT 0,
+    "InternetFee" TEXT NOT NULL DEFAULT 0,
+    "ElectricityUnitPrice" TEXT NOT NULL DEFAULT 0,
+    "WaterUnitPrice" TEXT NOT NULL DEFAULT 0,
+    "Description" TEXT NOT NULL DEFAULT '',
+    "IsActive" INTEGER NOT NULL DEFAULT 1,
+    "CreatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TEXT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_RoomCategories_Code" ON "RoomCategories" ("Code");
+
+CREATE TABLE IF NOT EXISTS "RoomZones"
+(
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_RoomZones" PRIMARY KEY AUTOINCREMENT,
+    "Code" TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
+    "BuildingId" INTEGER NULL,
+    "GenderPolicy" TEXT NOT NULL DEFAULT 'Mixed',
+    "FloorFrom" INTEGER NOT NULL DEFAULT 0,
+    "FloorTo" INTEGER NOT NULL DEFAULT 0,
+    "ManagerName" TEXT NOT NULL DEFAULT '',
+    "Description" TEXT NOT NULL DEFAULT '',
+    "IsActive" INTEGER NOT NULL DEFAULT 1,
+    "CreatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TEXT NULL,
+    CONSTRAINT "FK_RoomZones_Buildings_BuildingId" FOREIGN KEY ("BuildingId") REFERENCES "Buildings" ("Id") ON DELETE SET NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_RoomZones_Code" ON "RoomZones" ("Code");
+
+CREATE TABLE IF NOT EXISTS "PaymentMethodCatalogs"
+(
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_PaymentMethodCatalogs" PRIMARY KEY AUTOINCREMENT,
+    "Code" TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
+    "AccountName" TEXT NOT NULL DEFAULT '',
+    "AccountNumber" TEXT NOT NULL DEFAULT '',
+    "BankName" TEXT NOT NULL DEFAULT '',
+    "ProcessingFee" TEXT NOT NULL DEFAULT 0,
+    "Description" TEXT NOT NULL DEFAULT '',
+    "IsActive" INTEGER NOT NULL DEFAULT 1,
+    "CreatedAt" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TEXT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_PaymentMethodCatalogs_Code" ON "PaymentMethodCatalogs" ("Code");
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "Rooms" ADD COLUMN "RoomCategoryId" INTEGER NULL;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "Rooms" ADD COLUMN "RoomZoneId" INTEGER NULL;
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5105
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: D:\code\DormitoryManagement\backend\DormitoryManagement
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Code", "r"."Name", "r"."BedLayout", "r"."DefaultCapacity", "r"."BaseMonthlyFee", "r"."DepositAmount", "r"."HygieneFee", "r"."ServiceFee", "r"."InternetFee", "r"."ElectricityUnitPrice", "r"."WaterUnitPrice", "r"."Description", "r"."IsActive", (
+          SELECT COUNT(*)
+          FROM "Rooms" AS "r0"
+          WHERE "r"."Id" = "r0"."RoomCategoryId") AS "roomCount"
+      FROM "RoomCategories" AS "r"
+      ORDER BY "r"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."RoomNumber", "r"."BuildingId", "b"."Name" AS "buildingName", "b"."GenderPolicy" AS "buildingPolicy", "r"."RoomCategoryId", CASE
+          WHEN "r0"."Id" IS NULL THEN ''
+          ELSE "r0"."Name"
+      END AS "roomCategoryName", "r"."RoomZoneId", CASE
+          WHEN "r1"."Id" IS NULL THEN ''
+          ELSE "r1"."Name"
+      END AS "roomZoneName", "r"."FloorNumber", "r"."RoomType", "r"."Capacity", "r"."CurrentOccupancy", "r"."PricePerMonth", "r"."Status", "r"."Capacity" - "r"."CurrentOccupancy" AS "availableSlots", "r"."CreatedAt" AS "createdAt"
+      FROM "Rooms" AS "r"
+      INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      LEFT JOIN "RoomCategories" AS "r0" ON "r"."RoomCategoryId" = "r0"."Id"
+      LEFT JOIN "RoomZones" AS "r1" ON "r"."RoomZoneId" = "r1"."Id"
+      ORDER BY "r"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Code", "r"."Name", "r"."BedLayout", "r"."DefaultCapacity", "r"."BaseMonthlyFee", "r"."DepositAmount", "r"."HygieneFee", "r"."ServiceFee", "r"."InternetFee", "r"."ElectricityUnitPrice", "r"."WaterUnitPrice", "r"."Description", "r"."IsActive", (
+          SELECT COUNT(*)
+          FROM "Rooms" AS "r0"
+          WHERE "r"."Id" = "r0"."RoomCategoryId") AS "roomCount"
+      FROM "RoomCategories" AS "r"
+      ORDER BY "r"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."RoomNumber", "r"."BuildingId", "b"."Name" AS "buildingName", "b"."GenderPolicy" AS "buildingPolicy", "r"."RoomCategoryId", CASE
+          WHEN "r0"."Id" IS NULL THEN ''
+          ELSE "r0"."Name"
+      END AS "roomCategoryName", "r"."RoomZoneId", CASE
+          WHEN "r1"."Id" IS NULL THEN ''
+          ELSE "r1"."Name"
+      END AS "roomZoneName", "r"."FloorNumber", "r"."RoomType", "r"."Capacity", "r"."CurrentOccupancy", "r"."PricePerMonth", "r"."Status", "r"."Capacity" - "r"."CurrentOccupancy" AS "availableSlots", "r"."CreatedAt" AS "createdAt"
+      FROM "Rooms" AS "r"
+      INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      LEFT JOIN "RoomCategories" AS "r0" ON "r"."RoomCategoryId" = "r0"."Id"
+      LEFT JOIN "RoomZones" AS "r1" ON "r"."RoomZoneId" = "r1"."Id"
+      ORDER BY "r"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Code", "r"."Name", "r"."BedLayout", "r"."DefaultCapacity", "r"."BaseMonthlyFee", "r"."DepositAmount", "r"."HygieneFee", "r"."ServiceFee", "r"."InternetFee", "r"."ElectricityUnitPrice", "r"."WaterUnitPrice", "r"."Description", "r"."IsActive", (
+          SELECT COUNT(*)
+          FROM "Rooms" AS "r0"
+          WHERE "r"."Id" = "r0"."RoomCategoryId") AS "roomCount"
+      FROM "RoomCategories" AS "r"
+      ORDER BY "r"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "p"."Id", "p"."Code", "p"."Name", "p"."AccountName", "p"."AccountNumber", "p"."BankName", "p"."ProcessingFee", "p"."Description", "p"."IsActive"
+      FROM "PaymentMethodCatalogs" AS "p"
+      ORDER BY "p"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Code", "r"."Name", "r"."BuildingId", CASE
+          WHEN "b"."Id" IS NULL THEN ''
+          ELSE "b"."Name"
+      END AS "buildingName", "r"."GenderPolicy", "r"."FloorFrom", "r"."FloorTo", "r"."ManagerName", "r"."Description", "r"."IsActive", (
+          SELECT COUNT(*)
+          FROM "Rooms" AS "r0"
+          WHERE "r"."Id" = "r0"."RoomZoneId") AS "roomCount"
+      FROM "RoomZones" AS "r"
+      LEFT JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      ORDER BY "r"."Code"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "b"."Id", "b"."Code", "b"."Name", "b"."GenderPolicy", "b"."NumberOfFloors", "b"."ManagerName", "b"."Description", (
+          SELECT COUNT(*)
+          FROM "Rooms" AS "r"
+          WHERE "b"."Id" = "r"."BuildingId") AS "roomCount", (
+          SELECT COALESCE(SUM("r0"."Capacity"), 0)
+          FROM "Rooms" AS "r0"
+          WHERE "b"."Id" = "r0"."BuildingId") AS "totalCapacity", (
+          SELECT COALESCE(SUM("r1"."CurrentOccupancy"), 0)
+          FROM "Rooms" AS "r1"
+          WHERE "b"."Id" = "r1"."BuildingId") AS "currentOccupancy", "b"."CreatedAt" AS "createdAt"
+      FROM "Buildings" AS "b"
+      ORDER BY "b"."Code"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."RoomNumber", "r"."BuildingId", "b"."Name" AS "buildingName", "b"."GenderPolicy" AS "buildingPolicy", "r"."RoomCategoryId", CASE
+          WHEN "r0"."Id" IS NULL THEN ''
+          ELSE "r0"."Name"
+      END AS "roomCategoryName", "r"."RoomZoneId", CASE
+          WHEN "r1"."Id" IS NULL THEN ''
+          ELSE "r1"."Name"
+      END AS "roomZoneName", "r"."FloorNumber", "r"."RoomType", "r"."Capacity", "r"."CurrentOccupancy", "r"."PricePerMonth", "r"."Status", "r"."Capacity" - "r"."CurrentOccupancy" AS "availableSlots", "r"."CreatedAt" AS "createdAt"
+      FROM "Rooms" AS "r"
+      INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      LEFT JOIN "RoomCategories" AS "r0" ON "r"."RoomCategoryId" = "r0"."Id"
+      LEFT JOIN "RoomZones" AS "r1" ON "r"."RoomZoneId" = "r1"."Id"
+      ORDER BY "r"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[@__currentMonth_Year_0='?' (DbType = Int32), @__currentMonth_Month_1='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."BillingMonth", "r"."CreatedAt", "r"."DueDate", "r"."ElectricityFee", "r"."HygieneFee", "r"."InternetFee", "r"."MonthlyRoomFee", "r"."OtherFee", "r"."PaidAmount", "r"."PaidDate", "r"."PaymentMethod", "r"."PaymentNote", "r"."RecordedBy", "r"."RoomId", "r"."ServiceFee", "r"."Status", "r"."Total", "r"."UpdatedAt", "r"."UtilityId", "r"."WaterFee", "r0"."Id", "r0"."BuildingId", "r0"."Capacity", "r0"."CreatedAt", "r0"."CurrentOccupancy", "r0"."FloorNumber", "r0"."PricePerMonth", "r0"."RoomCategoryId", "r0"."RoomNumber", "r0"."RoomType", "r0"."RoomZoneId", "r0"."Status", "r0"."UpdatedAt"
+      FROM "RoomFinanceRecords" AS "r"
+      INNER JOIN "Rooms" AS "r0" ON "r"."RoomId" = "r0"."Id"
+      WHERE CAST(strftime('%Y', "r"."BillingMonth") AS INTEGER) = @__currentMonth_Year_0 AND CAST(strftime('%m', "r"."BillingMonth") AS INTEGER) = @__currentMonth_Month_1
+      ORDER BY "r0"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "b"."Id", "b"."Name", "b"."Code"
+      FROM "Buildings" AS "b"
+      ORDER BY "b"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "i"."Id", "i"."BillingMonth", "i"."CreatedAt", "i"."DueDate", "i"."ElectricityFee", "i"."InvoiceCode", "i"."PaidDate", "i"."RoomFee", "i"."RoomId", "i"."ServiceFee", "i"."Status", "i"."StudentId", "i"."Total", "i"."UpdatedAt", "i"."UtilityId", "i"."WaterFee"
+      FROM "Invoices" AS "i"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."BillingMonth", "r"."CreatedAt", "r"."DueDate", "r"."ElectricityFee", "r"."HygieneFee", "r"."InternetFee", "r"."MonthlyRoomFee", "r"."OtherFee", "r"."PaidAmount", "r"."PaidDate", "r"."PaymentMethod", "r"."PaymentNote", "r"."RecordedBy", "r"."RoomId", "r"."ServiceFee", "r"."Status", "r"."Total", "r"."UpdatedAt", "r"."UtilityId", "r"."WaterFee"
+      FROM "RoomFinanceRecords" AS "r"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "s"."Id", "s"."StudentCode", "s"."Name", "s"."Gender", "s"."DateOfBirth", "s"."Phone", "s"."Email", "s"."Faculty", "s"."ClassName", "s"."Address", "s"."EmergencyContact", "s"."Status", "s"."RoomId", "r"."RoomNumber" AS "roomNumber", "b"."Name" AS "buildingName", "s"."CreatedAt" AS "createdAt"
+      FROM "Students" AS "s"
+      LEFT JOIN "Rooms" AS "r" ON "s"."RoomId" = "r"."Id"
+      LEFT JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      ORDER BY "s"."StudentCode"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."RoomNumber", "r"."BuildingId", "b"."Name" AS "buildingName", "r"."RoomCategoryId", CASE
+          WHEN "r0"."Id" IS NULL THEN ''
+          ELSE "r0"."Name"
+      END AS "roomCategoryName", "r"."RoomZoneId", CASE
+          WHEN "r1"."Id" IS NULL THEN ''
+          ELSE "r1"."Name"
+      END AS "roomZoneName", "r"."Capacity", "r"."CurrentOccupancy"
+      FROM "Rooms" AS "r"
+      INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      LEFT JOIN "RoomCategories" AS "r0" ON "r"."RoomCategoryId" = "r0"."Id"
+      LEFT JOIN "RoomZones" AS "r1" ON "r"."RoomZoneId" = "r1"."Id"
+      ORDER BY "r"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."StudentId", "s"."Name" AS "studentName", "s"."StudentCode" AS "studentCode", "r"."RoomId", "r0"."RoomNumber" AS "roomNumber", "r"."RegistrationDate", "r"."ApprovedDate", "r"."Note", "r"."Status", "r"."CreatedAt"
+      FROM "Registrations" AS "r"
+      INNER JOIN "Students" AS "s" ON "r"."StudentId" = "s"."Id"
+      INNER JOIN "Rooms" AS "r0" ON "r"."RoomId" = "r0"."Id"
+      ORDER BY "r"."RegistrationDate" DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "c"."Id", "c"."ContractCode", "c"."StudentId", "s"."Name" AS "studentName", "c"."RoomId", "r"."RoomNumber" AS "roomNumber", "c"."DepositAmount", "c"."MonthlyFee", "c"."StartDate", "c"."EndDate", "c"."Status", "c"."CreatedAt"
+      FROM "Contracts" AS "c"
+      INNER JOIN "Students" AS "s" ON "c"."StudentId" = "s"."Id"
+      INNER JOIN "Rooms" AS "r" ON "c"."RoomId" = "r"."Id"
+      ORDER BY "c"."StartDate" DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "s"."Id", "s"."Name", "s"."StudentCode", "s"."RoomId"
+      FROM "Students" AS "s"
+      ORDER BY "s"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."BuildingId", "r"."Capacity", "r"."CreatedAt", "r"."CurrentOccupancy", "r"."FloorNumber", "r"."PricePerMonth", "r"."RoomCategoryId", "r"."RoomNumber", "r"."RoomType", "r"."RoomZoneId", "r"."Status", "r"."UpdatedAt", "b"."Id", "b"."Code", "b"."CreatedAt", "b"."Description", "b"."GenderPolicy", "b"."ManagerName", "b"."Name", "b"."NumberOfFloors", "b"."UpdatedAt"
+      FROM "Rooms" AS "r"
+      INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Name"
+      FROM "Roles" AS "r"
+      ORDER BY "r"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "s"."Id", "s"."Address", "s"."ClassName", "s"."CreatedAt", "s"."DateOfBirth", "s"."Email", "s"."EmergencyContact", "s"."Faculty", "s"."Gender", "s"."Name", "s"."Phone", "s"."RoomId", "s"."Status", "s"."StudentCode", "s"."UpdatedAt"
+      FROM "Students" AS "s"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "u"."Id", "u"."RoomId", "u"."BillingMonth"
+      FROM "Utilities" AS "u"
+      ORDER BY "u"."BillingMonth" DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "c"."Id", "c"."ContractCode", "c"."CreatedAt", "c"."DepositAmount", "c"."EndDate", "c"."MonthlyFee", "c"."RoomId", "c"."StartDate", "c"."Status", "c"."StudentId", "c"."UpdatedAt"
+      FROM "Contracts" AS "c"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Code", "r"."Name", "r"."DefaultCapacity", "r"."BaseMonthlyFee", "r"."DepositAmount", "r"."HygieneFee", "r"."ServiceFee", "r"."InternetFee", "r"."ElectricityUnitPrice", "r"."WaterUnitPrice"
+      FROM "RoomCategories" AS "r"
+      WHERE "r"."IsActive"
+      ORDER BY "r"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."Code", "r"."Name", "r"."BuildingId", "r"."GenderPolicy"
+      FROM "RoomZones" AS "r"
+      WHERE "r"."IsActive"
+      ORDER BY "r"."Code"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."RoomId", "r0"."RoomNumber" AS "roomNumber", "b"."Name" AS "buildingName", "r"."MonthlyRoomFee", "r"."ElectricityUnitPrice", "r"."WaterUnitPrice", "r"."HygieneFee", "r"."ServiceFee", "r"."InternetFee", "r"."OtherFee", "r"."OtherFeeName", "r"."BillingCycleDay", "r"."Notes", "r"."CreatedAt"
+      FROM "RoomFeeProfiles" AS "r"
+      INNER JOIN "Rooms" AS "r0" ON "r"."RoomId" = "r0"."Id"
+      INNER JOIN "Buildings" AS "b" ON "r0"."BuildingId" = "b"."Id"
+      ORDER BY "b"."Code", "r0"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "u"."Id", "u"."RoomId", "r"."RoomNumber" AS "roomNumber", "b"."Name" AS "buildingName", "u"."ElectricityOld", "u"."ElectricityNew", "u"."ElectricityNew" - "u"."ElectricityOld" AS "electricityUsage", "u"."WaterOld", "u"."WaterNew", "u"."WaterNew" - "u"."WaterOld" AS "waterUsage", "u"."ElectricityUnitPrice", "u"."WaterUnitPrice", "u"."BillingMonth", ef_multiply(CAST("u"."ElectricityNew" - "u"."ElectricityOld" AS TEXT), "u"."ElectricityUnitPrice") AS "electricityFee", ef_multiply(CAST("u"."WaterNew" - "u"."WaterOld" AS TEXT), "u"."WaterUnitPrice") AS "waterFee", (
+          SELECT COUNT(*)
+          FROM "Invoices" AS "i"
+          WHERE "i"."UtilityId" = "u"."Id") AS "generatedInvoiceCount", (
+          SELECT COUNT(*)
+          FROM "RoomFinanceRecords" AS "r0"
+          WHERE "r0"."UtilityId" = "u"."Id") AS "generatedRoomFinanceCount", "u"."CreatedAt"
+      FROM "Utilities" AS "u"
+      INNER JOIN "Rooms" AS "r" ON "u"."RoomId" = "r"."Id"
+      INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+      ORDER BY "u"."BillingMonth" DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."ApprovedDate", "r"."CreatedAt", "r"."Note", "r"."RegistrationDate", "r"."RoomId", "r"."Status", "r"."StudentId", "r"."UpdatedAt", "s"."Id", "s"."Address", "s"."ClassName", "s"."CreatedAt", "s"."DateOfBirth", "s"."Email", "s"."EmergencyContact", "s"."Faculty", "s"."Gender", "s"."Name", "s"."Phone", "s"."RoomId", "s"."Status", "s"."StudentCode", "s"."UpdatedAt", "r0"."Id", "r0"."BuildingId", "r0"."Capacity", "r0"."CreatedAt", "r0"."CurrentOccupancy", "r0"."FloorNumber", "r0"."PricePerMonth", "r0"."RoomCategoryId", "r0"."RoomNumber", "r0"."RoomType", "r0"."RoomZoneId", "r0"."Status", "r0"."UpdatedAt"
+      FROM "Registrations" AS "r"
+      INNER JOIN "Students" AS "s" ON "r"."StudentId" = "s"."Id"
+      INNER JOIN "Rooms" AS "r0" ON "r"."RoomId" = "r0"."Id"
+      ORDER BY "r"."CreatedAt" DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "p"."Id", "p"."Code", "p"."Name", "p"."ProcessingFee"
+      FROM "PaymentMethodCatalogs" AS "p"
+      WHERE "p"."IsActive"
+      ORDER BY "p"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."RoomId", "r0"."RoomNumber" AS "roomNumber", "b"."Name" AS "buildingName", "r"."UtilityId", "r"."BillingMonth", CASE
+          WHEN "u"."Id" IS NOT NULL THEN "u"."ElectricityNew" - "u"."ElectricityOld"
+          ELSE 0
+      END AS "electricityUsage", CASE
+          WHEN "u"."Id" IS NOT NULL THEN "u"."WaterNew" - "u"."WaterOld"
+          ELSE 0
+      END AS "waterUsage", "r"."MonthlyRoomFee", "r"."ElectricityFee", "r"."WaterFee", "r"."HygieneFee", "r"."ServiceFee", "r"."InternetFee", "r"."OtherFee", "r"."Total", "r"."PaidAmount", ef_add("r"."Total", ef_negate("r"."PaidAmount")) AS "remainingAmount", "r"."Status", "r"."DueDate", "r"."PaidDate", "r"."PaymentMethod", "r"."PaymentNote", "r"."RecordedBy", "r"."CreatedAt"
+      FROM "RoomFinanceRecords" AS "r"
+      INNER JOIN "Rooms" AS "r0" ON "r"."RoomId" = "r0"."Id"
+      INNER JOIN "Buildings" AS "b" ON "r0"."BuildingId" = "b"."Id"
+      LEFT JOIN "Utilities" AS "u" ON "r"."UtilityId" = "u"."Id"
+      ORDER BY "r"."BillingMonth" DESC, "r0"."RoomNumber"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "r"."Id", "r"."CreatedAt", "r"."Description", "r"."Name", "r"."UpdatedAt"
+      FROM "Roles" AS "r"
+      ORDER BY "r"."Name"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "i"."Id", "i"."InvoiceCode", "i"."StudentId", "s"."Name" AS "studentName", "s"."StudentCode" AS "studentCode", "i"."RoomId", "r"."RoomNumber" AS "roomNumber", "i"."UtilityId", "i"."RoomFee", "i"."ElectricityFee", "i"."WaterFee", "i"."ServiceFee", "i"."Total", "i"."Status", "i"."BillingMonth", "i"."DueDate", "i"."PaidDate", "i"."CreatedAt"
+      FROM "Invoices" AS "i"
+      INNER JOIN "Students" AS "s" ON "i"."StudentId" = "s"."Id"
+      INNER JOIN "Rooms" AS "r" ON "i"."RoomId" = "r"."Id"
+      ORDER BY "i"."BillingMonth" DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "u"."Id", "u"."Username", "u"."FullName", "u"."Email", "u"."RoleId", "r"."Name" AS "roleName", "u"."IsActive", "u"."CreatedAt"
+      FROM "Users" AS "u"
+      INNER JOIN "Roles" AS "r" ON "u"."RoleId" = "r"."Id"
+      ORDER BY "u"."Username"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "u"."Id", "u"."CreatedAt", "u"."Email", "u"."FullName", "u"."IsActive", "u"."PasswordHash", "u"."RoleId", "u"."UpdatedAt", "u"."Username"
+      FROM "Users" AS "u"
+warn: Microsoft.EntityFrameworkCore.Query[20504]
+      Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@__id_0='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT "t"."Id", "t"."BuildingId", "t"."Capacity", "t"."CreatedAt", "t"."CurrentOccupancy", "t"."FloorNumber", "t"."PricePerMonth", "t"."RoomCategoryId", "t"."RoomNumber", "t"."RoomType", "t"."RoomZoneId", "t"."Status", "t"."UpdatedAt", "t"."Id0", "t"."Code", "t"."CreatedAt0", "t"."Description", "t"."GenderPolicy", "t"."ManagerName", "t"."Name", "t"."NumberOfFloors", "t"."UpdatedAt0", "t"."Id1", "t"."BaseMonthlyFee", "t"."BedLayout", "t"."Code0", "t"."CreatedAt1", "t"."DefaultCapacity", "t"."DepositAmount", "t"."Description0", "t"."ElectricityUnitPrice", "t"."HygieneFee", "t"."InternetFee", "t"."IsActive", "t"."Name0", "t"."ServiceFee", "t"."UpdatedAt1", "t"."WaterUnitPrice", "t"."Id2", "t"."BuildingId0", "t"."Code1", "t"."CreatedAt2", "t"."Description1", "t"."FloorFrom", "t"."FloorTo", "t"."GenderPolicy0", "t"."IsActive0", "t"."ManagerName0", "t"."Name1", "t"."UpdatedAt2", "s"."Id", "s"."Address", "s"."ClassName", "s"."CreatedAt", "s"."DateOfBirth", "s"."Email", "s"."EmergencyContact", "s"."Faculty", "s"."Gender", "s"."Name", "s"."Phone", "s"."RoomId", "s"."Status", "s"."StudentCode", "s"."UpdatedAt", "u"."Id", "u"."BillingMonth", "u"."CreatedAt", "u"."ElectricityNew", "u"."ElectricityOld", "u"."ElectricityUnitPrice", "u"."RoomId", "u"."UpdatedAt", "u"."WaterNew", "u"."WaterOld", "u"."WaterUnitPrice", "i"."Id", "i"."BillingMonth", "i"."CreatedAt", "i"."DueDate", "i"."ElectricityFee", "i"."InvoiceCode", "i"."PaidDate", "i"."RoomFee", "i"."RoomId", "i"."ServiceFee", "i"."Status", "i"."StudentId", "i"."Total", "i"."UpdatedAt", "i"."UtilityId", "i"."WaterFee"
+      FROM (
+          SELECT "r"."Id", "r"."BuildingId", "r"."Capacity", "r"."CreatedAt", "r"."CurrentOccupancy", "r"."FloorNumber", "r"."PricePerMonth", "r"."RoomCategoryId", "r"."RoomNumber", "r"."RoomType", "r"."RoomZoneId", "r"."Status", "r"."UpdatedAt", "b"."Id" AS "Id0", "b"."Code", "b"."CreatedAt" AS "CreatedAt0", "b"."Description", "b"."GenderPolicy", "b"."ManagerName", "b"."Name", "b"."NumberOfFloors", "b"."UpdatedAt" AS "UpdatedAt0", "r0"."Id" AS "Id1", "r0"."BaseMonthlyFee", "r0"."BedLayout", "r0"."Code" AS "Code0", "r0"."CreatedAt" AS "CreatedAt1", "r0"."DefaultCapacity", "r0"."DepositAmount", "r0"."Description" AS "Description0", "r0"."ElectricityUnitPrice", "r0"."HygieneFee", "r0"."InternetFee", "r0"."IsActive", "r0"."Name" AS "Name0", "r0"."ServiceFee", "r0"."UpdatedAt" AS "UpdatedAt1", "r0"."WaterUnitPrice", "r1"."Id" AS "Id2", "r1"."BuildingId" AS "BuildingId0", "r1"."Code" AS "Code1", "r1"."CreatedAt" AS "CreatedAt2", "r1"."Description" AS "Description1", "r1"."FloorFrom", "r1"."FloorTo", "r1"."GenderPolicy" AS "GenderPolicy0", "r1"."IsActive" AS "IsActive0", "r1"."ManagerName" AS "ManagerName0", "r1"."Name" AS "Name1", "r1"."UpdatedAt" AS "UpdatedAt2"
+          FROM "Rooms" AS "r"
+          INNER JOIN "Buildings" AS "b" ON "r"."BuildingId" = "b"."Id"
+          LEFT JOIN "RoomCategories" AS "r0" ON "r"."RoomCategoryId" = "r0"."Id"
+          LEFT JOIN "RoomZones" AS "r1" ON "r"."RoomZoneId" = "r1"."Id"
+          WHERE "r"."Id" = @__id_0
+          LIMIT 1
+      ) AS "t"
+      LEFT JOIN "Students" AS "s" ON "t"."Id" = "s"."RoomId"
+      LEFT JOIN "Utilities" AS "u" ON "t"."Id" = "u"."RoomId"
+      LEFT JOIN "Invoices" AS "i" ON "t"."Id" = "i"."RoomId"
+      ORDER BY "t"."Id", "t"."Id0", "t"."Id1", "t"."Id2", "s"."StudentCode", "s"."Id", "u"."BillingMonth" DESC, "u"."Id", "i"."BillingMonth" DESC

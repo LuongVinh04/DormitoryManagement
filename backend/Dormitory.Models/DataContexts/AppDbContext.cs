@@ -10,6 +10,9 @@ namespace Dormitory.Models.DataContexts
         public DbSet<Users> Users { get; set; }
         public DbSet<Roles> Roles { get; set; }
         public DbSet<Buildings> Buildings { get; set; }
+        public DbSet<RoomCategory> RoomCategories { get; set; }
+        public DbSet<RoomZone> RoomZones { get; set; }
+        public DbSet<PaymentMethodCatalog> PaymentMethodCatalogs { get; set; }
         public DbSet<Rooms> Rooms { get; set; }
         public DbSet<Students> Students { get; set; }
         public DbSet<Registrations> Registrations { get; set; }
@@ -24,6 +27,18 @@ namespace Dormitory.Models.DataContexts
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<Buildings>()
+                .HasIndex(x => x.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<RoomCategory>()
+                .HasIndex(x => x.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<RoomZone>()
+                .HasIndex(x => x.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<PaymentMethodCatalog>()
                 .HasIndex(x => x.Code)
                 .IsUnique();
 
@@ -60,6 +75,24 @@ namespace Dormitory.Models.DataContexts
                 .WithMany(x => x.Rooms)
                 .HasForeignKey(x => x.BuildingId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Rooms>()
+                .HasOne(x => x.RoomCategory)
+                .WithMany(x => x.Rooms)
+                .HasForeignKey(x => x.RoomCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Rooms>()
+                .HasOne(x => x.RoomZone)
+                .WithMany(x => x.Rooms)
+                .HasForeignKey(x => x.RoomZoneId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<RoomZone>()
+                .HasOne(x => x.Building)
+                .WithMany()
+                .HasForeignKey(x => x.BuildingId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Students>()
                 .HasOne(x => x.Room)
