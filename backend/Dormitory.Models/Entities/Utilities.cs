@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,6 +15,8 @@ namespace Dormitory.Models.Entities
         public int WaterNew { get; set; }
         public decimal ElectricityUnitPrice { get; set; }
         public decimal WaterUnitPrice { get; set; }
+        public string? ElectricityEvidenceUrl { get; set; }
+        public string? WaterEvidenceUrl { get; set; }
         public DateTime BillingMonth { get; set; }
 
         public Rooms? Room { get; set; }

@@ -11,6 +11,7 @@ public static class DatabaseSeeder
     {
         await db.Database.EnsureCreatedAsync();
         await DatabaseSchemaUpdater.EnsureFinancialSchemaAsync(db);
+        await SeedPermissionsAsync(db);
 
         if (await db.Buildings.AnyAsync())
         {
@@ -32,10 +33,14 @@ public static class DatabaseSeeder
 
         var users = new List<Users>
         {
-            new() { Username = "admin", FullName = "System Admin", Email = "admin@dorm.local", PasswordHash = "admin123", RoleId = roles[0].Id, IsActive = true, CreatedAt = now },
-            new() { Username = "manager", FullName = "Dormitory Manager", Email = "manager@dorm.local", PasswordHash = "manager123", RoleId = roles[1].Id, IsActive = true, CreatedAt = now }
+            new() { Username = "admin", FullName = "System Admin", Email = "admin@dorm.local", PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"), RoleId = roles[0].Id, IsActive = true, CreatedAt = now },
+            new() { Username = "roomoperator", FullName = "Dormitory Manager", Email = "manager@dorm.local", PasswordHash = BCrypt.Net.BCrypt.HashPassword("manager123"), RoleId = roles[1].Id, IsActive = true, CreatedAt = now },
+            new() { Username = "cashier", FullName = "Dormitory Cashier", Email = "cashier@dorm.local", PasswordHash = BCrypt.Net.BCrypt.HashPassword("cashier123"), RoleId = roles[2].Id, IsActive = true, CreatedAt = now }
         };
         db.Users.AddRange(users);
+        await db.SaveChangesAsync();
+
+        await SeedRolePermissionsAsync(db, roles);
 
         var buildings = new List<Buildings>
         {
@@ -406,5 +411,111 @@ public static class DatabaseSeeder
         {
             await db.SaveChangesAsync();
         }
+    }
+
+    private static async Task SeedPermissionsAsync(AppDbContext db)
+    {
+        if (await db.Permissions.AnyAsync()) return;
+
+        var now = DateTime.UtcNow;
+        var permissions = new List<Permissions>
+        {
+            new() { Code = "dashboard.view", Name = "Xem tổng quan", Module = "Dashboard", CreatedAt = now },
+            new() { Code = "buildings.view", Name = "Xem tòa nhà", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "buildings.create", Name = "Thêm tòa nhà", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "buildings.update", Name = "Sửa tòa nhà", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "buildings.delete", Name = "Xóa tòa nhà", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "rooms.view", Name = "Xem phòng", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "rooms.create", Name = "Thêm phòng", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "rooms.update", Name = "Sửa phòng", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "rooms.delete", Name = "Xóa phòng", Module = "Cơ sở vật chất", CreatedAt = now },
+            new() { Code = "students.view", Name = "Xem sinh viên", Module = "Sinh viên", CreatedAt = now },
+            new() { Code = "students.create", Name = "Thêm sinh viên", Module = "Sinh viên", CreatedAt = now },
+            new() { Code = "students.update", Name = "Sửa sinh viên", Module = "Sinh viên", CreatedAt = now },
+            new() { Code = "students.delete", Name = "Xóa sinh viên", Module = "Sinh viên", CreatedAt = now },
+            new() { Code = "room.assign", Name = "Xếp phòng", Module = "Điều phối", CreatedAt = now },
+            new() { Code = "room.transfer", Name = "Chuyển phòng", Module = "Điều phối", CreatedAt = now },
+            new() { Code = "room.removeStudent", Name = "Trả phòng", Module = "Điều phối", CreatedAt = now },
+            new() { Code = "registrations.view", Name = "Xem đăng ký", Module = "Điều phối", CreatedAt = now },
+            new() { Code = "registrations.approve", Name = "Duyệt đăng ký", Module = "Điều phối", CreatedAt = now },
+            new() { Code = "registrations.reject", Name = "Từ chối đăng ký", Module = "Điều phối", CreatedAt = now },
+            new() { Code = "contracts.view", Name = "Xem hợp đồng", Module = "Hợp đồng", CreatedAt = now },
+            new() { Code = "contracts.create", Name = "Tạo hợp đồng", Module = "Hợp đồng", CreatedAt = now },
+            new() { Code = "contracts.update", Name = "Sửa hợp đồng", Module = "Hợp đồng", CreatedAt = now },
+            new() { Code = "utilities.view", Name = "Xem chỉ số điện nước", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "utilities.create", Name = "Nhập điện nước", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "utilities.update", Name = "Sửa điện nước", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "utilities.delete", Name = "Xóa điện nước", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "invoices.view", Name = "Xem hóa đơn", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "invoices.create", Name = "Tạo hóa đơn", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "invoices.update", Name = "Sửa hóa đơn", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "invoices.delete", Name = "Xóa hóa đơn", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "invoices.markPaid", Name = "Đánh dấu đã thu HĐ", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFinance.view", Name = "Xem công nợ", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFinance.create", Name = "Tạo công nợ phòng", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFinance.update", Name = "Sửa công nợ phòng", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFinance.markPaid", Name = "Thu tiền phòng", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFinance.delete", Name = "Xóa công nợ phòng", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFeeProfile.view", Name = "Xem cấu hình phí", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFeeProfile.create", Name = "Thêm cấu hình phí", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFeeProfile.update", Name = "Sửa cấu hình phí", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "roomFeeProfile.delete", Name = "Xóa cấu hình phí", Module = "Tài chính", CreatedAt = now },
+            new() { Code = "users.view", Name = "Xem người dùng", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "users.create", Name = "Thêm người dùng", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "users.update", Name = "Sửa người dùng", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "users.delete", Name = "Xóa người dùng", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "roles.view", Name = "Xem vai trò", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "roles.create", Name = "Thêm vai trò", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "roles.update", Name = "Sửa vai trò", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "roles.delete", Name = "Xóa vai trò", Module = "Quản trị", CreatedAt = now },
+            new() { Code = "permissions.manage", Name = "Phân quyền", Module = "Quản trị", CreatedAt = now },
+        };
+        db.Permissions.AddRange(permissions);
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedRolePermissionsAsync(AppDbContext db, List<Roles> roles)
+    {
+        if (await db.RolePermissions.AnyAsync()) return;
+
+        var permissions = await db.Permissions.ToListAsync();
+        var rolePermissions = new List<RolePermissions>();
+
+        var adminRole = roles.First(r => r.Name == "Admin");
+        foreach (var p in permissions)
+        {
+            rolePermissions.Add(new RolePermissions { RoleId = adminRole.Id, PermissionId = p.Id });
+        }
+
+        var managerRole = roles.First(r => r.Name == "Manager");
+        var managerPerms = permissions.Where(p => 
+            p.Module == "Dashboard" || 
+            p.Module == "Cơ sở vật chất" || 
+            p.Module == "Sinh viên" || 
+            p.Module == "Điều phối" || 
+            p.Module == "Hợp đồng").ToList();
+        
+        foreach (var p in managerPerms)
+        {
+            if (p.Code.Contains(".delete")) continue; // Manager cannot delete
+            rolePermissions.Add(new RolePermissions { RoleId = managerRole.Id, PermissionId = p.Id });
+        }
+
+        var accountantRole = roles.First(r => r.Name == "Accountant");
+        var financePerms = permissions.Where(p => 
+            p.Module == "Dashboard" || 
+            p.Module == "Tài chính" || 
+            p.Module == "Cơ sở vật chất" && p.Code.Contains(".view") ||
+            p.Module == "Sinh viên" && p.Code.Contains(".view")
+        ).ToList();
+
+        foreach (var p in financePerms)
+        {
+            if (p.Code.Contains(".delete")) continue; // Accountant cannot delete
+            rolePermissions.Add(new RolePermissions { RoleId = accountantRole.Id, PermissionId = p.Id });
+        }
+
+        db.RolePermissions.AddRange(rolePermissions);
+        await db.SaveChangesAsync();
     }
 }

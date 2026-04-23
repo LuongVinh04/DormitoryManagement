@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,5 +12,6 @@ namespace Dormitory.Models.Entities
         public string Description { get; set; } = string.Empty;
 
         public ICollection<Users> Users { get; set; } = new List<Users>();
+        public ICollection<RolePermissions> RolePermissions { get; set; } = new List<RolePermissions>();
     }
 }

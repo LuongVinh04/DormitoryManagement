@@ -3,6 +3,7 @@ import { ENTITY_CONFIGS } from './constants'
 import { renderCell } from './helpers'
 
 export function Panel({
+  panelId,
   title,
   description,
   children,
@@ -18,7 +19,7 @@ export function Panel({
   ].filter(Boolean).join(' ')
 
   return (
-    <section className={panelClassName}>
+    <section id={panelId} className={panelClassName}>
       <div className="panel-header">
         <div>
           <h2>{title}</h2>
@@ -78,9 +79,9 @@ export function SectionBanner({ eyebrow, title, description, stats = [], actions
   )
 }
 
-export function SummaryBlock({ label, value }) {
+export function SummaryBlock({ label, value, compact = false }) {
   return (
-    <div className="summary-block">
+    <div className={`summary-block ${compact ? 'compact' : ''}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

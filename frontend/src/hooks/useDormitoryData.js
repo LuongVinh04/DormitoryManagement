@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { API_ENDPOINTS, ENTITY_CONFIGS } from '../constants'
-import { formatDateInput, normalizePayload, readError, validatePayload } from '../helpers'
+import { formatDateInput, normalizePayload, readError, validatePayload, apiFetch } from '../helpers'
 
 const INITIAL_DATA = {
   roomCategories: [],
@@ -28,6 +28,7 @@ const INITIAL_ROOM_ACTIONS = {
 
 export function useDormitoryData() {
   const [dashboard, setDashboard] = useState(null)
+  const [notifications, setNotifications] = useState([])
   const [financeSummary, setFinanceSummary] = useState(null)
   const [lookups, setLookups] = useState({ buildings: [], rooms: [], students: [], roles: [], utilities: [], roomCategories: [], roomZones: [], paymentMethods: [] })
   const [data, setData] = useState(INITIAL_DATA)
@@ -74,10 +75,10 @@ export function useDormitoryData() {
       }
 
       const [dashboardRes, financeSummaryRes, lookupRes, ...entityResponses] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/operations/room-finances/summary'),
-        fetch('/api/lookups'),
-        ...Object.values(API_ENDPOINTS).map((url) => fetch(url)),
+        apiFetch('/api/dashboard'),
+        apiFetch('/api/operations/room-finances/summary'),
+        apiFetch('/api/lookups'),
+        ...Object.values(API_ENDPOINTS).map((url) => apiFetch(url)),
       ])
 
       if (!dashboardRes.ok || !financeSummaryRes.ok || !lookupRes.ok || entityResponses.some((res) => !res.ok)) {
@@ -97,6 +98,7 @@ export function useDormitoryData() {
       })
 
       setDashboard(dashboardJson)
+      setNotifications(dashboardJson.notifications ?? [])
       setFinanceSummary(financeSummaryJson)
       setLookups(lookupJson)
       setData(nextData)
@@ -111,7 +113,7 @@ export function useDormitoryData() {
 
   async function loadRoomOverview(roomId) {
     try {
-      const response = await fetch(`/api/facilities/rooms/${roomId}/overview`)
+      const response = await apiFetch(`/api/facilities/rooms/${roomId}/overview`)
       if (!response.ok) {
         throw new Error('Không thể tải chi tiết phòng.')
       }
@@ -136,6 +138,23 @@ export function useDormitoryData() {
       else if (field.type === 'select') defaults[field.name] = field.options[0]?.value ?? ''
       else defaults[field.name] = ''
     })
+
+    if (entityKey === 'utilities') {
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      defaults.billingMonth = formatDateInput(startOfMonth.toISOString())
+      defaults.electricityOld = 0
+      defaults.electricityNew = 0
+      defaults.waterOld = 0
+      defaults.waterNew = 0
+    }
+
+    if (entityKey === 'roomFinances') {
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      defaults.billingMonth = formatDateInput(startOfMonth.toISOString())
+      defaults.paidAmount = 0
+      defaults.status = 'Unpaid'
+      defaults.paymentMethod = ''
+    }
 
     setFormErrors({})
     setModal({ entityKey, mode: 'create', id: null, values: defaults })
@@ -171,6 +190,45 @@ export function useDormitoryData() {
         }
       }
 
+      if (current.entityKey === 'utilities' && name === 'roomId') {
+        const profile = data.roomFeeProfiles.find((item) => String(item.roomId) === String(value))
+        if (profile) {
+          nextValues.electricityUnitPrice = profile.electricityUnitPrice ?? 0
+          nextValues.waterUnitPrice = profile.waterUnitPrice ?? 0
+        }
+      }
+
+      if (current.entityKey === 'roomFinances' && name === 'roomId') {
+        const profile = data.roomFeeProfiles.find((item) => String(item.roomId) === String(value))
+        if (profile) {
+          nextValues.monthlyRoomFee = profile.monthlyRoomFee ?? 0
+          nextValues.hygieneFee = profile.hygieneFee ?? 0
+          nextValues.serviceFee = profile.serviceFee ?? 0
+          nextValues.internetFee = profile.internetFee ?? 0
+          nextValues.otherFee = profile.otherFee ?? 0
+        }
+      }
+
+      if (current.entityKey === 'roomFinances' && name === 'utilityId') {
+        const utility = data.utilities.find((item) => String(item.id) === String(value))
+        if (utility) {
+          nextValues.electricityFee = utility.electricityFee ?? 0
+          nextValues.waterFee = utility.waterFee ?? 0
+          nextValues.billingMonth = utility.billingMonth ?? nextValues.billingMonth
+          if (utility.roomId && !nextValues.roomId) {
+             nextValues.roomId = String(utility.roomId)
+             const profile = data.roomFeeProfiles.find((item) => String(item.roomId) === String(utility.roomId))
+             if (profile) {
+               nextValues.monthlyRoomFee = profile.monthlyRoomFee ?? 0
+               nextValues.hygieneFee = profile.hygieneFee ?? 0
+               nextValues.serviceFee = profile.serviceFee ?? 0
+               nextValues.internetFee = profile.internetFee ?? 0
+               nextValues.otherFee = profile.otherFee ?? 0
+             }
+          }
+        }
+      }
+
       return { ...current, values: nextValues }
     })
     setFormErrors((current) => {
@@ -199,7 +257,7 @@ export function useDormitoryData() {
       setError('')
       setNotice('')
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(normalizePayload(ENTITY_CONFIGS[entityKey].fields, values)),
@@ -228,7 +286,7 @@ export function useDormitoryData() {
       setSaving(true)
       setError('')
       setNotice('')
-      const response = await fetch(`${API_ENDPOINTS[entityKey]}/${item.id}`, { method: 'DELETE' })
+      const response = await apiFetch(`${API_ENDPOINTS[entityKey]}/${item.id}`, { method: 'DELETE' })
       if (!response.ok) {
         throw new Error(await readError(response))
       }
@@ -264,6 +322,7 @@ export function useDormitoryData() {
   return {
     activeRoomId,
     dashboard,
+    notifications,
     data,
     deleteEntity,
     error,

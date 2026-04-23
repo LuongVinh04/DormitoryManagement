@@ -8,6 +8,9 @@ import { StatusToast } from './components/StatusToast'
 import { useDashboardViewModel } from './hooks/useDashboardViewModel'
 import { useDormitoryData } from './hooks/useDormitoryData'
 import { usePanelLayouts } from './hooks/usePanelLayouts'
+import { useSidebarLayout } from './hooks/useSidebarLayout'
+import { useAuth } from './hooks/useAuth'
+import { LoginSection } from './features/auth/LoginSection'
 import { currencyFormat, numberFormat } from './helpers'
 
 const AdminSection = lazy(() => import('./features/admin/AdminSection').then((module) => ({ default: module.AdminSection })))
@@ -19,11 +22,34 @@ const OverviewSection = lazy(() => import('./features/overview/OverviewSection')
 const StudentsSection = lazy(() => import('./features/students/StudentsSection').then((module) => ({ default: module.StudentsSection })))
 
 function App() {
+  const { user, loading: authLoading, logout, hasPermission, hasAnyPermission } = useAuth()
+  const {
+    isSidebarCollapsed,
+    isSidebarSummaryCollapsed,
+    isSidebarNavCollapsed,
+    toggleSidebarCollapse,
+    toggleSidebarSummary,
+    toggleSidebarNav
+  } = useSidebarLayout()
   const location = useLocation()
   const navigate = useNavigate()
-  const activeRoute = NAVIGATION.find((item) => item.path === location.pathname) ?? NAVIGATION[0]
-  const section = activeRoute.key
-  const { getPanelProps } = usePanelLayouts()
+
+  const allowedNavs = NAVIGATION.filter((item) => {
+    switch (item.key) {
+      case 'overview': return hasPermission('dashboard.view')
+      case 'catalog': return true
+      case 'operations': return hasAnyPermission(['registrations.view', 'room.assign'])
+      case 'facilities': return hasAnyPermission(['buildings.view', 'rooms.view'])
+      case 'students': return hasPermission('students.view')
+      case 'finance': return hasAnyPermission(['roomFinance.view', 'invoices.view', 'utilities.view'])
+      case 'admin': return hasAnyPermission(['users.view', 'roles.view', 'permissions.manage'])
+      default: return true
+    }
+  })
+
+  const activeRoute = allowedNavs.find((item) => item.path === location.pathname) ?? allowedNavs[0]
+  const section = activeRoute?.key ?? 'overview'
+  const { getPanelProps, expandPanel } = usePanelLayouts()
   const {
     activeRoomId,
     dashboard,
@@ -57,10 +83,39 @@ function App() {
     waitingStudents,
   } = useDashboardViewModel({ dashboard, data, financeSummary, section })
 
+  const handleFocusCardClick = (item) => {
+    if (item.route) {
+      if (location.pathname !== item.route) {
+        navigate(item.route)
+      }
+      setTimeout(() => {
+        if (item.panelKey) expandPanel(item.panelKey)
+        if (item.panelId) {
+          const el = document.getElementById(item.panelId)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 50)
+    }
+  }
+
+  if (authLoading) {
+    return <div className="loading-screen"><div className="loading-card"><h1>Đang kiểm tra phiên làm việc...</h1></div></div>
+  }
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginSection />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
+
   if (loading || !dashboard) {
     return (
       <div className="loading-screen">
         <div className="loading-card">
+          <img src="/dormitory-hub-logo.svg" alt="Dormitory Hub" className="loading-brand-logo" />
           <span className="badge">Dormitory Hub</span>
           <h1>Đang tải trung tâm vận hành ký túc xá</h1>
           <p>Hệ thống đang tổng hợp dữ liệu vận hành, lưu trú và tài chính.</p>
@@ -72,20 +127,52 @@ function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand-panel">
-          <span className="brand-kicker">Dormitory Hub</span>
+        <div className={isSidebarCollapsed ? 'brand-panel compact' : 'brand-panel'}>
+          <div className="brand-panel-header">
+            <div className="brand-panel-title">
+              <img src="/dormitory-hub-logo.svg" alt="Dormitory Hub" className="brand-logo" />
+              <span className="brand-kicker">DORMITORY HUB</span>
+            </div>
+            <button className="sidebar-toggle" onClick={toggleSidebarCollapse} title={isSidebarCollapsed ? "Mở rộng" : "Thu gọn"}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {isSidebarCollapsed ? <polyline points="9 18 15 12 9 6"></polyline> : <polyline points="15 18 9 12 15 6"></polyline>}
+              </svg>
+            </button>
+          </div>
           <h2>Điều hành lưu trú thông minh</h2>
-          <p>Một bảng điều khiển đủ dùng cho quản lý cơ sở vật chất, vận hành sinh viên và tài chính nội trú.</p>
+          <div className="brand-panel-user-row">
+            <p>
+              <span className="greeting-text">Xin chào ! </span>
+              <strong>{user.fullName || user.username}</strong>
+            </p>
+            <button className="secondary-button" onClick={logout}>Đăng xuất</button>
+          </div>
         </div>
 
-        <div className="sidebar-summary">
-          <SummaryBlock label="Phòng đang ở" value={numberFormat.format(dashboard.summary.occupiedRooms)} />
-          <SummaryBlock label="Giường còn trống" value={numberFormat.format(dashboard.summary.availableBeds)} />
-          <SummaryBlock label="Chờ duyệt" value={numberFormat.format(dashboard.summary.waitingStudents)} />
+        <div className={isSidebarSummaryCollapsed ? 'sidebar-summary compact' : 'sidebar-summary'}>
+          <div className="sidebar-summary-header" onClick={toggleSidebarSummary}>
+            <span>Thống kê</span>
+            <button title={isSidebarSummaryCollapsed ? "Mở rộng" : "Thu gọn"}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {isSidebarSummaryCollapsed ? <polyline points="6 9 12 15 18 9"></polyline> : <polyline points="18 15 12 9 6 15"></polyline>}
+              </svg>
+            </button>
+          </div>
+          <SummaryBlock label="Phòng đang ở" value={numberFormat.format(dashboard.summary.occupiedRooms)} compact={isSidebarSummaryCollapsed} />
+          <SummaryBlock label="Giường còn trống" value={numberFormat.format(dashboard.summary.availableBeds)} compact={isSidebarSummaryCollapsed} />
+          <SummaryBlock label="Chờ duyệt" value={numberFormat.format(dashboard.summary.waitingStudents)} compact={isSidebarSummaryCollapsed} />
         </div>
 
-        <nav className="nav-grid">
-          {NAVIGATION.map((item) => (
+        <nav className={isSidebarNavCollapsed ? 'nav-grid collapsed' : 'nav-grid'}>
+          <div className="nav-section-header" onClick={toggleSidebarNav}>
+            <span>Danh mục</span>
+            <button title={isSidebarNavCollapsed ? "Mở rộng" : "Thu gọn"}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {isSidebarNavCollapsed ? <polyline points="6 9 12 15 18 9"></polyline> : <polyline points="18 15 12 9 6 15"></polyline>}
+              </svg>
+            </button>
+          </div>
+          {allowedNavs.map((item) => (
             <button
               key={item.key}
               className={section === item.key ? 'nav-link active' : 'nav-link'}
@@ -113,16 +200,21 @@ function App() {
             </div>
             <div className="hero-focus-grid">
               {safeFocusCards.map((item) => (
-                <article key={item.label} className={`hero-focus-item ${item.tone}`}>
+                <article
+                  key={item.label}
+                  className={`hero-focus-item ${item.tone}`}
+                  style={{ cursor: item.route ? 'pointer' : 'default' }}
+                  onClick={() => handleFocusCardClick(item)}
+                >
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
                 </article>
               ))}
             </div>
             <div className="header-actions">
-            <button className="primary-button" onClick={refreshData}>{'L\u00e0m m\u1edbi to\u00e0n h\u1ec7 th\u1ed1ng'}</button>
-            <button className="secondary-button" onClick={() => openCreate('students')}>{'Ti\u1ebfp nh\u1eadn sinh vi\u00ean m\u1edbi'}</button>
-          </div>
+              <button className="primary-button" onClick={refreshData}>{'L\u00e0m m\u1edbi to\u00e0n h\u1ec7 th\u1ed1ng'}</button>
+              <button className="secondary-button" onClick={() => openCreate('students')}>{'Ti\u1ebfp nh\u1eadn sinh vi\u00ean m\u1edbi'}</button>
+            </div>
           </div>
         </header>
 
@@ -152,12 +244,12 @@ function App() {
         <Suspense fallback={<div className="page-loading">Đang mở phân hệ...</div>}>
           <Routes>
             <Route path="/" element={<Navigate to="/overview" replace />} />
-          <Route path="/overview" element={<OverviewSection dashboard={dashboard} getPanelProps={getPanelProps} />} />
-          <Route
-            path="/catalog"
-            element={<CatalogSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
-          />
-          <Route
+            <Route path="/overview" element={<OverviewSection dashboard={dashboard} getPanelProps={getPanelProps} />} />
+            <Route
+              path="/catalog"
+              element={<CatalogSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+            />
+            <Route
               path="/operations"
               element={(
                 <OperationsSection

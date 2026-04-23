@@ -59,5 +59,15 @@ export function usePanelLayouts() {
     }
   }
 
-  return { getPanelProps }
+  function expandPanel(panelKey) {
+    setPanelLayouts((current) => ({
+      ...current,
+      [panelKey]: {
+        ...(current[panelKey] ?? { collapsed: false, expanded: false }),
+        collapsed: false,
+      },
+    }))
+  }
+
+  return { getPanelProps, expandPanel }
 }

@@ -145,6 +145,71 @@ public class DashboardController(AppDbContext db) : ControllerBase
             })
             .ToList();
 
+        var pendingRegistrations = registrations.Where(x => x.Status == "Pending").ToList();
+        var dueSoonEnd = DateTime.Today.AddDays(5);
+        var dueSoonFinances = financeRecords
+            .Where(x => x.Status != "Paid" && x.DueDate.Date >= DateTime.Today && x.DueDate.Date <= dueSoonEnd)
+            .ToList();
+        var overdueFinancesList = financeRecords
+            .Where(x => x.Status != "Paid" && x.DueDate.Date < DateTime.Today)
+            .ToList();
+
+        var notifications = new List<object>();
+
+        if (pendingRegistrations.Count > 0)
+        {
+            notifications.Add(new
+            {
+                id = "pending-registrations",
+                type = "operations",
+                severity = "warning",
+                title = "Hồ sơ chưa duyệt",
+                description = $"Có {pendingRegistrations.Count} hồ sơ đang chờ duyệt.",
+                count = pendingRegistrations.Count,
+                amount = (decimal?)null,
+                route = "/operations",
+                panelKey = "operations-registrations",
+                panelId = "panel-operations-registrations",
+                actionLabel = "Đi tới duyệt hồ sơ"
+            });
+        }
+
+        if (dueSoonFinances.Count > 0)
+        {
+            notifications.Add(new
+            {
+                id = "due-soon-finances",
+                type = "finance",
+                severity = "warning",
+                title = "Khoản đến hạn",
+                description = $"Có {dueSoonFinances.Count} khoản tài chính sắp đến hạn (5 ngày).",
+                count = dueSoonFinances.Count,
+                amount = dueSoonFinances.Sum(x => x.Total - x.PaidAmount),
+                route = "/finance",
+                panelKey = "finance-room-finances",
+                panelId = "panel-finance-room-finances",
+                actionLabel = "Đi tới theo dõi tài chính"
+            });
+        }
+
+        if (overdueFinancesList.Count > 0)
+        {
+            notifications.Add(new
+            {
+                id = "overdue-finances",
+                type = "finance",
+                severity = "danger",
+                title = "Khoản quá hạn",
+                description = $"Có {overdueFinancesList.Count} khoản đã quá hạn thanh toán.",
+                count = overdueFinancesList.Count,
+                amount = overdueFinancesList.Sum(x => x.Total - x.PaidAmount),
+                route = "/finance",
+                panelKey = "finance-room-finances",
+                panelId = "panel-finance-room-finances",
+                actionLabel = "Đi tới xử lý công nợ"
+            });
+        }
+
         return Ok(new
         {
             summary = new
@@ -168,7 +233,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
             monthlyRevenue = monthlyRevenueData,
             recentActivities,
             alerts,
-            roomSnapshots
+            roomSnapshots,
+            notifications
         });
     }
 }

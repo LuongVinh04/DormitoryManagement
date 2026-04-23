@@ -226,6 +226,8 @@ public class OperationsController(AppDbContext db) : ControllerBase
                 x.ElectricityUnitPrice,
                 x.WaterUnitPrice,
                 x.BillingMonth,
+                x.ElectricityEvidenceUrl,
+                x.WaterEvidenceUrl,
                 electricityFee = (x.ElectricityNew - x.ElectricityOld) * x.ElectricityUnitPrice,
                 waterFee = (x.WaterNew - x.WaterOld) * x.WaterUnitPrice,
                 generatedInvoiceCount = db.Invoices.Count(i => i.UtilityId == x.Id),
@@ -240,6 +242,10 @@ public class OperationsController(AppDbContext db) : ControllerBase
     [HttpPost("utilities")]
     public async Task<IActionResult> CreateUtility([FromBody] UtilityRequest request)
     {
+        var profile = await db.RoomFeeProfiles.FirstOrDefaultAsync(x => x.RoomId == request.RoomId);
+        var elecUnit = request.ElectricityUnitPrice > 0 ? request.ElectricityUnitPrice : (profile?.ElectricityUnitPrice ?? 0);
+        var waterUnit = request.WaterUnitPrice > 0 ? request.WaterUnitPrice : (profile?.WaterUnitPrice ?? 0);
+
         var entity = new Utilities
         {
             RoomId = request.RoomId,
@@ -247,9 +253,11 @@ public class OperationsController(AppDbContext db) : ControllerBase
             ElectricityNew = request.ElectricityNew,
             WaterOld = request.WaterOld,
             WaterNew = request.WaterNew,
-            ElectricityUnitPrice = request.ElectricityUnitPrice,
-            WaterUnitPrice = request.WaterUnitPrice,
-            BillingMonth = request.BillingMonth
+            ElectricityUnitPrice = elecUnit,
+            WaterUnitPrice = waterUnit,
+            BillingMonth = request.BillingMonth,
+            ElectricityEvidenceUrl = request.ElectricityEvidenceUrl,
+            WaterEvidenceUrl = request.WaterEvidenceUrl
         };
 
         db.Utilities.Add(entity);
@@ -263,14 +271,20 @@ public class OperationsController(AppDbContext db) : ControllerBase
         var entity = await db.Utilities.FindAsync(id);
         if (entity is null) return NotFound();
 
+        var profile = await db.RoomFeeProfiles.FirstOrDefaultAsync(x => x.RoomId == request.RoomId);
+        var elecUnit = request.ElectricityUnitPrice > 0 ? request.ElectricityUnitPrice : (profile?.ElectricityUnitPrice ?? 0);
+        var waterUnit = request.WaterUnitPrice > 0 ? request.WaterUnitPrice : (profile?.WaterUnitPrice ?? 0);
+
         entity.RoomId = request.RoomId;
         entity.ElectricityOld = request.ElectricityOld;
         entity.ElectricityNew = request.ElectricityNew;
         entity.WaterOld = request.WaterOld;
         entity.WaterNew = request.WaterNew;
-        entity.ElectricityUnitPrice = request.ElectricityUnitPrice;
-        entity.WaterUnitPrice = request.WaterUnitPrice;
+        entity.ElectricityUnitPrice = elecUnit;
+        entity.WaterUnitPrice = waterUnit;
         entity.BillingMonth = request.BillingMonth;
+        entity.ElectricityEvidenceUrl = request.ElectricityEvidenceUrl;
+        entity.WaterEvidenceUrl = request.WaterEvidenceUrl;
         entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(entity);
@@ -427,6 +441,8 @@ public class OperationsController(AppDbContext db) : ControllerBase
                 x.PaymentMethod,
                 x.PaymentNote,
                 x.RecordedBy,
+                electricityEvidenceUrl = x.Utility != null ? x.Utility.ElectricityEvidenceUrl : null,
+                waterEvidenceUrl = x.Utility != null ? x.Utility.WaterEvidenceUrl : null,
                 x.CreatedAt
             })
             .ToListAsync();
@@ -475,24 +491,44 @@ public class OperationsController(AppDbContext db) : ControllerBase
     [HttpPost("room-finances")]
     public async Task<IActionResult> CreateRoomFinanceRecord([FromBody] RoomFinanceRecordRequest request)
     {
+        var profile = await db.RoomFeeProfiles.FirstOrDefaultAsync(x => x.RoomId == request.RoomId);
+        var utility = request.UtilityId.HasValue ? await db.Utilities.FindAsync(request.UtilityId.Value) : null;
+
+        var monthlyRoomFee = request.MonthlyRoomFee > 0 ? request.MonthlyRoomFee : (profile?.MonthlyRoomFee ?? 0);
+        var hygieneFee = request.HygieneFee > 0 ? request.HygieneFee : (profile?.HygieneFee ?? 0);
+        var serviceFee = request.ServiceFee > 0 ? request.ServiceFee : (profile?.ServiceFee ?? 0);
+        var internetFee = request.InternetFee > 0 ? request.InternetFee : (profile?.InternetFee ?? 0);
+        var otherFee = request.OtherFee > 0 ? request.OtherFee : (profile?.OtherFee ?? 0);
+
+        var electricityFee = request.ElectricityFee;
+        var waterFee = request.WaterFee;
+
+        if (utility != null)
+        {
+            if (electricityFee == 0) electricityFee = (utility.ElectricityNew - utility.ElectricityOld) * utility.ElectricityUnitPrice;
+            if (waterFee == 0) waterFee = (utility.WaterNew - utility.WaterOld) * utility.WaterUnitPrice;
+        }
+
         var billingMonth = new DateTime(request.BillingMonth.Year, request.BillingMonth.Month, 1);
+        var totalAmount = monthlyRoomFee + electricityFee + waterFee + hygieneFee + serviceFee + internetFee + otherFee;
+
         var entity = new RoomFinanceRecord
         {
             RoomId = request.RoomId,
             UtilityId = request.UtilityId,
             BillingMonth = billingMonth,
-            MonthlyRoomFee = request.MonthlyRoomFee,
-            ElectricityFee = request.ElectricityFee,
-            WaterFee = request.WaterFee,
-            HygieneFee = request.HygieneFee,
-            ServiceFee = request.ServiceFee,
-            InternetFee = request.InternetFee,
-            OtherFee = request.OtherFee,
-            Total = request.MonthlyRoomFee + request.ElectricityFee + request.WaterFee + request.HygieneFee + request.ServiceFee + request.InternetFee + request.OtherFee,
+            MonthlyRoomFee = monthlyRoomFee,
+            ElectricityFee = electricityFee,
+            WaterFee = waterFee,
+            HygieneFee = hygieneFee,
+            ServiceFee = serviceFee,
+            InternetFee = internetFee,
+            OtherFee = otherFee,
+            Total = totalAmount,
             PaidAmount = request.PaidAmount,
             Status = DormitoryWorkflowService.ResolveFinanceStatus(
                 request.PaidAmount,
-                request.MonthlyRoomFee + request.ElectricityFee + request.WaterFee + request.HygieneFee + request.ServiceFee + request.InternetFee + request.OtherFee,
+                totalAmount,
                 request.DueDate,
                 request.PaidDate),
             DueDate = request.DueDate,

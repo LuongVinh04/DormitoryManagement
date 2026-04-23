@@ -23,16 +23,25 @@ export function useDashboardViewModel({ dashboard, data, financeSummary, section
       label: 'Quá hạn cần xử lý',
       value: numberFormat.format(dashboard?.summary?.overdueInvoices ?? 0),
       tone: 'rose',
+      route: '/finance',
+      panelKey: 'finance-invoices',
+      panelId: 'panel-finance-invoices'
     },
     {
       label: 'Hồ sơ đang chờ',
       value: numberFormat.format(dashboard?.summary?.waitingStudents ?? 0),
       tone: 'amber',
+      route: '/operations',
+      panelKey: 'operations-registrations',
+      panelId: 'panel-operations-registrations'
     },
     {
       label: 'Công suất sử dụng',
       value: `${occupancyRate}%`,
       tone: 'teal',
+      route: '/overview',
+      panelKey: 'overview-occupancy-chart',
+      panelId: 'panel-overview-occupancy-chart'
     },
   ]), [dashboard, occupancyRate])
 

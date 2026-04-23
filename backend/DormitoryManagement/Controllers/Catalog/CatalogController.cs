@@ -238,4 +238,22 @@ public class CatalogController(AppDbContext db) : ControllerBase
         entity.Description = request.Description.Trim();
         entity.IsActive = request.IsActive;
     }
+
+    [HttpGet("permissions")]
+    public async Task<IActionResult> GetPermissions()
+    {
+        var data = await db.Permissions
+            .OrderBy(x => x.Module)
+            .ThenBy(x => x.Name)
+            .Select(x => new
+            {
+                x.Id,
+                x.Code,
+                x.Name,
+                x.Module
+            })
+            .ToListAsync();
+
+        return Ok(data);
+    }
 }

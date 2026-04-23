@@ -31,6 +31,8 @@ public class UtilityRequest
     public int WaterNew { get; set; }
     public decimal ElectricityUnitPrice { get; set; }
     public decimal WaterUnitPrice { get; set; }
+    public string? ElectricityEvidenceUrl { get; set; }
+    public string? WaterEvidenceUrl { get; set; }
     public DateTime BillingMonth { get; set; }
 }
 

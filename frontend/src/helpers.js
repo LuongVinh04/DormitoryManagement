@@ -1,4 +1,5 @@
 import { VALUE_LABELS } from './constants'
+import { beginLoading } from './loadingBus'
 
 export const numberFormat = new Intl.NumberFormat('vi-VN')
 export const currencyFormat = new Intl.NumberFormat('vi-VN', {
@@ -140,5 +141,27 @@ export async function readError(response) {
     return await response.text()
   } catch {
     return 'Đã có lỗi xảy ra.'
+  }
+}
+
+export async function apiFetch(url, options = {}) {
+  const endLoading = beginLoading()
+  const token = localStorage.getItem('dormitory_token')
+  const headers = { ...options.headers }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  try {
+    const response = await fetch(url, { ...options, headers })
+    if (response.status === 401 || response.status === 403) {
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+
+    return response
+  } finally {
+    await endLoading()
   }
 }

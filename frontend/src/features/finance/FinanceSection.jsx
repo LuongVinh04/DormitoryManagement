@@ -42,7 +42,7 @@ export function FinanceSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={getPanelProps('finance-invoices')}
+        panelProps={{ ...getPanelProps('finance-invoices'), panelId: 'panel-finance-invoices' }}
         extraRowActions={(item) => [
           item.status !== 'Paid'
             ? {
@@ -125,7 +125,7 @@ export function FinanceSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={getPanelProps('finance-room-finances')}
+        panelProps={{ ...getPanelProps('finance-room-finances'), panelId: 'panel-finance-room-finances' }}
         extraRowActions={(item) => [
           item.utilityId
             ? {

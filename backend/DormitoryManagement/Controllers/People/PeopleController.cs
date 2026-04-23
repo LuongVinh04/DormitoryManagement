@@ -352,4 +352,110 @@ public class PeopleController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpGet("roles/{id:int}/permissions")]
+    public async Task<IActionResult> GetRolePermissions(int id)
+    {
+        var role = await db.Roles.FindAsync(id);
+        if (role == null) return NotFound();
+
+        var permissionIds = await db.RolePermissions
+            .Where(x => x.RoleId == id)
+            .Select(x => x.PermissionId)
+            .ToListAsync();
+
+        return Ok(permissionIds);
+    }
+
+    [HttpPut("roles/{id:int}/permissions")]
+    public async Task<IActionResult> UpdateRolePermissions(int id, [FromBody] UpdateRolePermissionsRequest request)
+    {
+        var role = await db.Roles.FindAsync(id);
+        if (role == null) return NotFound();
+
+        var existing = await db.RolePermissions.Where(x => x.RoleId == id).ToListAsync();
+        db.RolePermissions.RemoveRange(existing);
+
+        var newPerms = request.PermissionIds.Distinct().Select(pid => new RolePermissions
+        {
+            RoleId = id,
+            PermissionId = pid
+        });
+
+        db.RolePermissions.AddRange(newPerms);
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Cập nhật quyền của vai trò thành công." });
+    }
+
+    [HttpGet("users/{id:int}/permissions")]
+    public async Task<IActionResult> GetUserPermissions(int id)
+    {
+        var user = await db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        var granted = await db.UserPermissions
+            .Where(x => x.UserId == id && x.IsGranted)
+            .Select(x => x.PermissionId)
+            .ToListAsync();
+
+        var denied = await db.UserPermissions
+            .Where(x => x.UserId == id && !x.IsGranted)
+            .Select(x => x.PermissionId)
+            .ToListAsync();
+
+        return Ok(new { allowedPermissionIds = granted, deniedPermissionIds = denied });
+    }
+
+    [HttpPut("users/{id:int}/permissions")]
+    public async Task<IActionResult> UpdateUserPermissions(int id, [FromBody] UpdateUserPermissionsRequest request)
+    {
+        var user = await db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        var existing = await db.UserPermissions.Where(x => x.UserId == id).ToListAsync();
+        db.UserPermissions.RemoveRange(existing);
+
+        var addedList = new List<UserPermissions>();
+
+        foreach (var pid in request.AllowedPermissionIds.Distinct())
+        {
+            addedList.Add(new UserPermissions { UserId = id, PermissionId = pid, IsGranted = true });
+        }
+
+        foreach (var pid in request.DeniedPermissionIds.Distinct())
+        {
+            // If already allowed, skip denying to prevent conflict
+            if (!request.AllowedPermissionIds.Contains(pid))
+            {
+                addedList.Add(new UserPermissions { UserId = id, PermissionId = pid, IsGranted = false });
+            }
+        }
+
+        db.UserPermissions.AddRange(addedList);
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Cập nhật quyền đặc biệt của người dùng thành công." });
+    }
+
+    [HttpPut("users/{id:int}/role")]
+    public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateUserRoleRequest request)
+    {
+        var user = await db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        var role = await db.Roles.FindAsync(request.RoleId);
+        if (role == null) return BadRequest(new { message = "Vai trò không hợp lệ." });
+
+        user.RoleId = role.Id;
+        user.UpdatedAt = DateTime.UtcNow;
+        
+        // When changing roles, might want to clear user-specific overrides.
+        var existingOverrides = await db.UserPermissions.Where(x => x.UserId == id).ToListAsync();
+        db.UserPermissions.RemoveRange(existingOverrides);
+
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Cập nhật vai trò người dùng thành công." });
+    }
 }

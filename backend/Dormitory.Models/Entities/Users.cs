@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,5 +16,6 @@ namespace Dormitory.Models.Entities
         public bool IsActive { get; set; } = true;
 
         public Roles? Role { get; set; }
+        public ICollection<UserPermissions> UserPermissions { get; set; } = new List<UserPermissions>();
     }
 }
