@@ -1,36 +1,8 @@
 # Hệ thống Quản Trị Ký Túc Xá Sinh Viên
 
-## I. Đề tài
+## 1. Tổng quan
 
-Xây dựng một hệ thống web quản trị ký túc xá cho sinh viên, gồm:
-
-- Backend quản lý dữ liệu và nghiệp vụ vận hành.
-- Frontend quản trị bằng ReactJS, giao diện tiếng Việt.
-- Cơ sở dữ liệu dùng SQL Server.
-- Hệ thống có thể chạy thực tế với đầy đủ các luồng quản lý cơ bản.
-
-## II. Yêu cầu ban đầu
-
-### 1. Backend
-
-- Bổ sung các entity còn thiếu để hệ thống đủ dùng thực tế.
-- Viết các API cần thiết cho toàn bộ hệ thống.
-- Hoàn thiện các luồng nghiệp vụ quản lý sinh viên, phòng ở, đăng ký nội trú, hợp đồng, điện nước, hóa đơn, tài khoản người dùng.
-
-### 2. Frontend
-
-- Xây dựng web quản trị bằng ReactJS.
-- Có trang tổng quan dạng biểu đồ, thống kê.
-- Giao diện đẹp, dễ nhìn, kiểu dashboard quản trị thực tế.
-- Hỗ trợ tiếng Việt.
-- Responsive trên desktop, tablet, mobile.
-- Kiểm tra và xử lý lỗi chồng chữ, đè nút, vỡ layout.
-
-## III. Kết quả đã hoàn thành
-
-## 1. Cấu trúc project đã tách lại
-
-Project hiện đã được tổ chức lại theo đúng cấu trúc:
+Project hiện được tổ chức theo cấu trúc:
 
 ```text
 /project
@@ -39,29 +11,81 @@ Project hiện đã được tổ chức lại theo đúng cấu trúc:
   vinhchto.md
 ```
 
-- `backend`: chứa toàn bộ source .NET, API, entity, service và file cấu hình.
-- `frontend`: chứa source ReactJS + Vite.
-- Frontend build ra static files vào `backend/DormitoryManagement/wwwroot`.
+- `backend`: API ASP.NET Core, entity, service, cấu hình database.
+- `frontend`: React + Vite, build ra static files cho backend.
+- Frontend build vào:
+  - `backend/DormitoryManagement/wwwroot`
 
-## 2. Cơ sở dữ liệu đã chuyển sang SQL Server
+Hệ thống hiện dùng:
 
-Hệ thống đã được chuyển từ cấu hình cũ sang SQL Server.
+- Backend: .NET
+- Frontend: ReactJS + Vite
+- Database chuẩn chạy thực tế: SQL Server
 
-### Thông tin kết nối hiện tại
+---
+
+## 2. Trạng thái hoàn thành chính
+
+### Backend
+
+Đã có các nhóm chức năng:
+
+- quản lý tòa nhà, phòng, phân khu, loại phòng
+- quản lý sinh viên, hợp đồng, đăng ký nội trú
+- điều phối phòng: xếp phòng, chuyển phòng, trả phòng
+- điện nước, hóa đơn, công nợ tài chính theo phòng
+- tài khoản, vai trò, phân quyền
+- dashboard tổng quan vận hành
+
+### Frontend
+
+Đã có giao diện quản trị tiếng Việt với các khu:
+
+- Tổng quan
+- Danh mục
+- Điều phối phòng
+- Cơ sở vật chất
+- Sinh viên
+- Tài chính
+- Quản trị
+
+Đã có các cải tiến:
+
+- responsive desktop/tablet/mobile
+- panel thu gọn / phóng to
+- loading toàn cục khi gọi API
+- logo và favicon riêng
+- animation nhẹ
+
+---
+
+## 3. SQL Server là database chuẩn
+
+Hệ thống hiện thống nhất dùng SQL Server.
+
+### Connection string backend hiện tại
+
+File:
+
+- [backend/DormitoryManagement/appsettings.json](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/appsettings.json)
+
+Giá trị hiện tại:
+
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Server=localhost,1433;Database=DormitoryManagement;User Id=sa;Password=Dormitory@2026!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+}
+```
+
+### Thông tin kết nối đang dùng
 
 - Server: `localhost`
 - Port: `1433`
 - Database: `DormitoryManagement`
-- Username: `sa`
+- User: `sa`
 - Password: `Dormitory@2026!`
 
-### Connection string backend đang dùng
-
-```json
-Server=localhost,1433;Database=DormitoryManagement;User Id=sa;Password=Dormitory@2026!;TrustServerCertificate=True;MultipleActiveResultSets=true
-```
-
-### Cấu hình để connect bằng DBeaver / SSMS
+### Kết nối bằng SSMS / DBeaver
 
 - Host: `localhost`
 - Port: `1433`
@@ -69,221 +93,283 @@ Server=localhost,1433;Database=DormitoryManagement;User Id=sa;Password=Dormitory
 - Authentication: `SQL Server Authentication`
 - User: `sa`
 - Password: `Dormitory@2026!`
-- Tick `Trust Server Certificate` nếu công cụ yêu cầu
+- Bật `Trust Server Certificate` nếu công cụ yêu cầu
 
-Lưu ý:
+### Lưu ý quan trọng
 
-- Không dùng `Windows Authentication` cho cấu hình hiện tại.
-- Không dùng `(localdb)` hoặc `mssqllocaldb`.
-- Hệ thống đang dùng SQL Server chạy tại `localhost:1433`.
+Không dùng:
 
-## 3. Backend đã được mở rộng đầy đủ hơn
+- `Windows Authentication`
+- `(localdb)`
+- `mssqllocaldb`
 
-### 3.1. Nhóm nghiệp vụ đã bổ sung
+Vì project hiện tại chuẩn hóa theo SQL Server tại `localhost:1433`.
 
-Backend đã được bổ sung thêm service nghiệp vụ để xử lý các luồng thực tế:
+---
 
-- Xếp sinh viên vào phòng.
-- Chuyển sinh viên sang phòng khác.
-- Trả phòng / đưa sinh viên ra khỏi phòng.
-- Duyệt hồ sơ đăng ký nội trú.
-- Từ chối hồ sơ đăng ký nội trú.
-- Tự động tạo hóa đơn từ chỉ số điện nước.
-- Cập nhật hồ sơ người dùng.
-- Cập nhật trạng thái sinh viên.
+## 4. Cấu hình chạy backend với SQL Server
 
-### 3.2. API đã được mở rộng
+## Vấn đề cần lưu ý
 
-#### Dashboard
+Hiện code backend đọc cấu hình như sau:
 
-- `GET /api/dashboard`
+- nếu `DatabaseProvider = Sqlite` thì dùng SQLite
+- nếu không có hoặc không phải `Sqlite` thì dùng SQL Server qua `DefaultConnection`
 
-Trả về dữ liệu tổng quan:
+File liên quan:
 
-- Tổng sinh viên
-- Số phòng đang ở
-- Số giường còn trống
-- Hợp đồng hiệu lực
-- Hóa đơn chưa thu
-- Hóa đơn quá hạn
-- Người dùng đang hoạt động
-- Cảnh báo vận hành
-- Snapshot phòng
-- Công suất theo tòa
-- Trạng thái phòng
-- Trạng thái hóa đơn
-- Doanh thu theo tháng
-- Hoạt động gần đây
+- [backend/DormitoryManagement/Program.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Program.cs)
 
-#### Facilities
+Hiện tại:
 
-- `GET /api/facilities/buildings`
-- `POST /api/facilities/buildings`
-- `PUT /api/facilities/buildings/{id}`
-- `DELETE /api/facilities/buildings/{id}`
+- `appsettings.json` đang trỏ SQL Server
+- nhưng `appsettings.Development.json` vẫn còn:
+  - `"DatabaseProvider": "Sqlite"`
 
-- `GET /api/facilities/rooms`
-- `POST /api/facilities/rooms`
-- `PUT /api/facilities/rooms/{id}`
-- `DELETE /api/facilities/rooms/{id}`
-- `GET /api/facilities/rooms/{id}/overview`
-- `GET /api/facilities/rooms/{id}/students`
-- `POST /api/facilities/rooms/{roomId}/assign-student`
-- `POST /api/facilities/rooms/transfer-student`
-- `POST /api/facilities/rooms/{roomId}/remove-student`
+File:
 
-#### People
+- [backend/DormitoryManagement/appsettings.Development.json](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/appsettings.Development.json)
 
-- `GET /api/people/students`
-- `GET /api/people/students/{id}`
-- `POST /api/people/students`
-- `PUT /api/people/students/{id}`
-- `DELETE /api/people/students/{id}`
-- `PATCH /api/people/students/{id}/status`
+## Kết luận
 
-- `GET /api/people/users`
-- `GET /api/people/users/{id}`
-- `POST /api/people/users`
-- `PUT /api/people/users/{id}`
-- `DELETE /api/people/users/{id}`
-- `PUT /api/people/users/{id}/profile`
+Nếu chạy app trong môi trường Development mà không sửa file này, backend có thể ưu tiên SQLite.
 
-- `GET /api/people/roles`
-- `POST /api/people/roles`
-- `PUT /api/people/roles/{id}`
-- `DELETE /api/people/roles/{id}`
+## Cách thống nhất hoàn toàn sang SQL Server
 
-#### Operations
+Sửa `backend/DormitoryManagement/appsettings.Development.json` thành:
 
-- `GET /api/operations/registrations`
-- `POST /api/operations/registrations`
-- `PUT /api/operations/registrations/{id}`
-- `DELETE /api/operations/registrations/{id}`
-- `POST /api/operations/registrations/{id}/approve`
-- `POST /api/operations/registrations/{id}/reject`
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=DormitoryManagement;User Id=sa;Password=Dormitory@2026!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+  },
+  "Jwt": {
+    "Key": "DormitoryManagementSecretKey!@#$2026Dev",
+    "Issuer": "DormitoryHub",
+    "Audience": "DormitoryUsers",
+    "ExpireDays": 7
+  }
+}
+```
 
-- `GET /api/operations/contracts`
-- `POST /api/operations/contracts`
-- `PUT /api/operations/contracts/{id}`
-- `DELETE /api/operations/contracts/{id}`
+Hoặc tối thiểu:
 
-- `GET /api/operations/utilities`
-- `POST /api/operations/utilities`
-- `PUT /api/operations/utilities/{id}`
-- `DELETE /api/operations/utilities/{id}`
-- `POST /api/operations/utilities/{id}/generate-invoices`
+- bỏ `"DatabaseProvider": "Sqlite"`
+- thêm `"DefaultConnection"` trỏ SQL Server
 
-- `GET /api/operations/invoices`
-- `POST /api/operations/invoices`
-- `PUT /api/operations/invoices/{id}`
-- `DELETE /api/operations/invoices/{id}`
-- `POST /api/operations/invoices/{id}/mark-paid`
+Sau bước này, mọi môi trường chạy local sẽ đồng nhất sang SQL Server.
 
-### 3.3. Request model đã bổ sung
+---
 
-Đã bổ sung thêm các request model để phục vụ API:
+## 5. Cách project tự tạo database và bảng
 
-- `StudentStatusRequest`
-- `UserProfileRequest`
-- `AssignStudentRequest`
-- `TransferStudentRequest`
-- `RemoveStudentRequest`
-- `RegistrationDecisionRequest`
-- `InvoicePaymentRequest`
+Backend hiện không chạy migration EF theo kiểu chuẩn `dotnet ef database update`.
 
-## 4. Frontend đã được xây dựng thành dashboard quản trị thực tế
+Thay vào đó, project đang dùng:
 
-### 4.1. Các khu chức năng chính
+1. `db.Database.EnsureCreatedAsync()`
+2. `DatabaseSchemaUpdater.EnsureFinancialSchemaAsync(db)`
+3. `DatabaseSeeder.SeedAsync(db)`
 
-Frontend hiện đã có giao diện quản trị tiếng Việt với các khu:
+File liên quan:
 
-- Tổng quan
-- Điều phối phòng
-- Cơ sở vật chất
-- Sinh viên
-- Tài chính
-- Quản trị
+- [backend/DormitoryManagement/Program.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Program.cs)
+- [backend/DormitoryManagement/Services/Infrastructure/DatabaseSeeder.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Services/Infrastructure/DatabaseSeeder.cs)
+- [backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs)
 
-### 4.2. Các chức năng giao diện đã có
+## Ý nghĩa
 
-#### Tổng quan
+Khi app khởi động:
 
-- Hiển thị số liệu tổng hợp dạng metric cards.
-- Hiển thị biểu đồ công suất theo tòa.
-- Hiển thị biểu đồ trạng thái hóa đơn.
-- Hiển thị biểu đồ doanh thu theo tháng.
-- Hiển thị cảnh báo vận hành.
-- Hiển thị snapshot nhanh của phòng.
+- nếu database chưa có, `EnsureCreatedAsync()` sẽ tạo schema cơ bản từ model EF
+- `DatabaseSchemaUpdater` sẽ chạy SQL bổ sung để tạo hoặc cập nhật các bảng cần thêm
+- `DatabaseSeeder` sẽ seed:
+  - roles
+  - users
+  - permissions
+  - room categories
+  - room zones
+  - payment methods
+  - buildings
+  - rooms
+  - students
+  - registrations
+  - contracts
+  - utilities
+  - invoices
+  - room fee profiles
+  - room finance records
 
-#### Điều phối phòng
+## Các bảng / nhóm dữ liệu đã được tạo bổ sung
 
-- Chọn phòng cần thao tác.
-- Xem nhanh trạng thái phòng.
-- Xếp sinh viên chờ vào phòng.
-- Chuyển sinh viên sang phòng khác.
-- Trả phòng cho sinh viên.
-- Xem danh sách sinh viên đang ở trong phòng.
-- Duyệt hoặc từ chối hồ sơ đăng ký nội trú.
+`DatabaseSchemaUpdater` hiện đảm bảo có các bảng:
 
-#### Cơ sở vật chất
+- `RoomFeeProfiles`
+- `RoomFinanceRecords`
+- `RoomCategories`
+- `RoomZones`
+- `PaymentMethodCatalogs`
 
-- CRUD tòa nhà.
-- CRUD phòng ở.
+và các cột liên quan như:
 
-#### Sinh viên
+- `Rooms.RoomCategoryId`
+- `Rooms.RoomZoneId`
 
-- CRUD hồ sơ sinh viên.
-- CRUD hợp đồng nội trú.
+---
 
-#### Tài chính
+## 6. Generate SQL mới nhất / tạo bảng mới nhất
 
-- CRUD chỉ số điện nước.
-- Tạo hóa đơn từ kỳ điện nước.
-- CRUD hóa đơn.
-- Ghi nhận thanh toán hóa đơn.
+## Cách thực tế đang dùng trong project
 
-#### Quản trị
+Để generate schema mới nhất và tạo bảng theo code hiện tại, cách chuẩn của project là:
 
-- CRUD tài khoản người dùng.
-- CRUD vai trò hệ thống.
+1. Cấu hình đúng SQL Server trong `appsettings.json` và `appsettings.Development.json`
+2. Xóa database cũ nếu muốn tạo sạch hoàn toàn
+3. Chạy backend
+4. Để `EnsureCreated + DatabaseSchemaUpdater + Seeder` tự tạo schema và seed dữ liệu
 
-## 5. Các cải tiến giao diện đã thực hiện
+## Quy trình đầy đủ
 
-### 5.1. Nâng cấp màu sắc và bố cục
+### Bước 1: kiểm tra SQL Server đang chạy
 
-Đã chỉnh lại giao diện theo hướng dashboard hiện đại:
+Đảm bảo:
 
-- Màu chủ đạo xanh đậm, xanh teal, xanh dương.
-- Card bo góc lớn, bóng đổ nhẹ.
-- Có phần brand panel riêng.
-- Có nhóm thống kê rõ ràng.
-- Các panel có cấu trúc trực quan hơn.
+- SQL Server lắng nghe tại `localhost:1433`
+- database user `sa` đăng nhập được
 
-### 5.2. Hỗ trợ tiếng Việt
+### Bước 2: tạo hoặc xóa database nếu cần
 
-- Giao diện được chuyển sang tiếng Việt.
-- Các label, tiêu đề, nút thao tác, trạng thái hiển thị theo ngữ cảnh tiếng Việt.
-- Có ánh xạ trạng thái để hiển thị dễ hiểu hơn cho người dùng cuối.
+Nếu muốn generate sạch từ đầu:
 
-### 5.3. Đã xử lý responsive
+```sql
+IF DB_ID(N'DormitoryManagement') IS NOT NULL
+BEGIN
+    ALTER DATABASE [DormitoryManagement] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE [DormitoryManagement];
+END
+GO
 
-Đã sửa lại các lỗi responsive quan trọng:
+CREATE DATABASE [DormitoryManagement];
+GO
+```
 
-- Text dài tự xuống dòng thay vì tràn ra ngoài.
-- Nút chức năng không còn bị đè lên nhau.
-- Các nhóm nút tự wrap hợp lý trên màn nhỏ.
-- Header không còn chồng chữ khi màn hình hẹp.
-- Card và panel co giãn tốt hơn trên tablet/mobile.
-- Khu điều phối phòng hiển thị ổn định hơn khi đổi kích thước màn hình.
-- Bảng dữ liệu trên mobile chuyển sang dạng card-list để dễ đọc hơn.
-- Action button trong bảng hiển thị theo cột hoặc 2 cột tùy kích thước màn hình.
+### Bước 3: build frontend
 
-### 5.4. Kiểm tra lỗi font
+```powershell
+cd C:\Users\Minhhoangg\Desktop\CODE\project\frontend
+npm install
+npm run build
+```
 
-Đã rà lại để web hiển thị tiếng Việt.  
-Lưu ý: trong một số terminal PowerShell, chữ tiếng Việt có thể hiển thị sai dấu do encoding terminal, nhưng build frontend và web thực tế vẫn hoạt động bình thường. Cần phân biệt lỗi terminal với lỗi font thực tế trên trình duyệt.
+### Bước 4: chạy backend
 
-## 6. Các file frontend/backend quan trọng đã cập nhật
+```powershell
+cd C:\Users\Minhhoangg\Desktop\CODE\project\backend\DormitoryManagement
+dotnet build
+dotnet run --urls http://127.0.0.1:5101
+```
+
+### Bước 5: backend tự tạo schema
+
+Ngay khi app khởi động, backend sẽ:
+
+- tạo database objects còn thiếu
+- tạo bảng mới nhất theo cơ chế hiện tại
+- seed dữ liệu mặc định
+
+## Kết luận
+
+Trong project này, “generate SQL mới nhất” thực tế là:
+
+- chạy backend sau khi cấu hình SQL Server đúng
+- để code tự tạo bảng và seed
+
+Không phải luồng migration EF truyền thống.
+
+---
+
+## 7. Nếu muốn lấy script SQL để tạo bảng thủ công
+
+Project hiện đã có sẵn phần SQL quan trọng trong:
+
+- [backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs)
+
+Nếu cần cấp script cho DBA hoặc muốn chạy tay:
+
+1. lấy block SQL trong nhánh `db.Database.IsSqlServer()`
+2. chạy bằng SSMS trên database `DormitoryManagement`
+
+Tuy nhiên cần hiểu rõ:
+
+- script này chủ yếu bổ sung bảng mở rộng
+- schema nền ban đầu vẫn đang dựa vào `EnsureCreatedAsync()`
+
+Nên nếu muốn tạo hoàn toàn bằng SQL tay, cần:
+
+1. hoặc để app chạy 1 lần để tạo nền
+2. hoặc tự viết full script toàn bộ schema
+
+Trong trạng thái hiện tại, cách ổn nhất vẫn là:
+
+- tạo database rỗng
+- chạy app một lần
+
+---
+
+## 8. Cách chạy project đầy đủ
+
+## Backend
+
+```powershell
+cd C:\Users\Minhhoangg\Desktop\CODE\project\backend\DormitoryManagement
+dotnet build
+dotnet run --urls http://127.0.0.1:5101
+```
+
+## Frontend
+
+Frontend không cần chạy dev server nếu đã build vào backend.
+
+Nếu muốn build mới:
+
+```powershell
+cd C:\Users\Minhhoangg\Desktop\CODE\project\frontend
+npm install
+npm run build
+```
+
+## URL truy cập
+
+- [http://127.0.0.1:5101/](http://127.0.0.1:5101/)
+
+## Kiểm tra nhanh
+
+- trang chủ trả `200`
+- `/api/dashboard` trả `200`
+
+---
+
+## 9. Tài khoản seed mặc định
+
+Seed hiện có các tài khoản:
+
+- `admin` / `admin123`
+- `roomoperator` / `manager123`
+- `cashier` / `cashier123`
+
+Nguồn:
+
+- [backend/DormitoryManagement/Services/Infrastructure/DatabaseSeeder.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Services/Infrastructure/DatabaseSeeder.cs)
+
+---
+
+## 10. Các file quan trọng đã cập nhật
 
 ### Frontend
 
@@ -292,65 +378,29 @@ Lưu ý: trong một số terminal PowerShell, chữ tiếng Việt có thể hi
 - `frontend/src/components.jsx`
 - `frontend/src/constants.js`
 - `frontend/src/helpers.js`
-- `frontend/vite.config.js`
+- `frontend/src/loadingBus.js`
+- `frontend/src/components/GlobalLoadingOverlay.jsx`
 
 ### Backend
 
-- `backend/DormitoryManagement/Controllers/DashboardController.cs`
-- `backend/DormitoryManagement/Controllers/FacilitiesController.cs`
-- `backend/DormitoryManagement/Controllers/PeopleController.cs`
-- `backend/DormitoryManagement/Controllers/OperationsController.cs`
-- `backend/DormitoryManagement/Models/ApiModels.cs`
-- `backend/DormitoryManagement/Services/DormitoryWorkflowService.cs`
+- `backend/DormitoryManagement/Program.cs`
 - `backend/DormitoryManagement/appsettings.json`
+- `backend/DormitoryManagement/appsettings.Development.json`
+- `backend/DormitoryManagement/Services/Infrastructure/DatabaseSeeder.cs`
+- `backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs`
+- `backend/Dormitory.Models/DataContexts/AppDbContext.cs`
 
-## 7. Trạng thái chạy hiện tại
+---
 
-Đã kiểm tra và xác nhận:
+## 11. Lưu ý kỹ thuật
 
-- Frontend build thành công bằng `npm run build`
-- Backend build thành công bằng `dotnet build`
-- Web hiện đang chạy được
-- Trang chủ phản hồi `200`
-- API dashboard phản hồi `200`
+1. `appsettings.Development.json` phải được chỉnh sang SQL Server nếu muốn thống nhất hoàn toàn.
+2. Cơ chế hiện tại là `EnsureCreated + raw SQL updater + seeder`, không phải EF migration chuẩn.
+3. Nếu thay đổi entity lớn trong tương lai, cần cập nhật:
+   - model EF
+   - `DatabaseSchemaUpdater`
+   - `DatabaseSeeder` nếu có seed mặc định
+4. Nếu cần quy trình migration chuẩn hơn về lâu dài, nên chuyển dần sang:
+   - `dotnet ef migrations add ...`
+   - `dotnet ef database update`
 
-Địa chỉ đang chạy:
-
-- `http://127.0.0.1:5101/`
-
-## 8. Luồng sử dụng hệ thống thực tế
-
-Ví dụ luồng vận hành:
-
-1. Tạo tòa nhà và phòng ở.
-2. Tạo hồ sơ sinh viên.
-3. Tạo hồ sơ đăng ký nội trú.
-4. Duyệt hồ sơ đăng ký.
-5. Xếp sinh viên vào phòng.
-6. Tạo hợp đồng lưu trú.
-7. Ghi chỉ số điện nước.
-8. Tạo hóa đơn.
-9. Ghi nhận thanh toán.
-10. Quản lý tài khoản admin / vận hành / kế toán.
-
-## 9. Ghi chú thêm
-
-- Frontend và backend hiện đã tách thư mục riêng đúng yêu cầu.
-- Hệ thống hiện phù hợp để demo, phát triển tiếp hoặc hoàn thiện thêm phân quyền sâu hơn.
-- Nếu tiếp tục phát triển, các bước nên làm tiếp theo là:
-  - Bổ sung đăng nhập và xác thực JWT.
-  - Bổ sung phân quyền theo role chi tiết hơn.
-  - Tối ưu seed data.
-  - Tối ưu bundle frontend để giảm kích thước file build.
-  - Bổ sung test cho API và giao diện.
-
-## 10. Kết luận
-
-Hệ thống web quản trị ký túc xá đã được nâng cấp từ yêu cầu ban đầu thành một bộ ứng dụng có thể chạy thực tế gồm:
-
-- Backend .NET với API đầy đủ hơn.
-- Frontend ReactJS tiếng Việt.
-- Dashboard thống kê và biểu đồ.
-- Quản lý tòa nhà, phòng, sinh viên, đăng ký, hợp đồng, điện nước, hóa đơn, người dùng.
-- Dùng SQL Server thay cho cấu hình cũ.
-- Giao diện responsive và đã xử lý các lỗi text/button bị đè.
