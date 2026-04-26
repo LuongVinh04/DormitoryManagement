@@ -9,6 +9,7 @@ Project hiện được tổ chức theo cấu trúc:
   /backend
   /frontend
   vinhchto.md
+  sql-server-thong-nhat.md
 ```
 
 - `backend`: API ASP.NET Core, entity, service, cấu hình database.
@@ -61,15 +62,16 @@ Hệ thống hiện dùng:
 
 ## 3. SQL Server là database chuẩn
 
-Hệ thống hiện thống nhất dùng SQL Server.
+Hệ thống hiện thống nhất hoàn toàn dùng SQL Server.
 
 ### Connection string backend hiện tại
 
 File:
 
 - [backend/DormitoryManagement/appsettings.json](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/appsettings.json)
+- [backend/DormitoryManagement/appsettings.Development.json](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/appsettings.Development.json)
 
-Giá trị hiện tại:
+Giá trị chuẩn:
 
 ```json
 "ConnectionStrings": {
@@ -95,83 +97,39 @@ Giá trị hiện tại:
 - Password: `Dormitory@2026!`
 - Bật `Trust Server Certificate` nếu công cụ yêu cầu
 
-### Lưu ý quan trọng
+### Lưu ý
 
 Không dùng:
 
 - `Windows Authentication`
 - `(localdb)`
 - `mssqllocaldb`
-
-Vì project hiện tại chuẩn hóa theo SQL Server tại `localhost:1433`.
+- SQLite
 
 ---
 
-## 4. Cấu hình chạy backend với SQL Server
+## 4. Backend đã khóa thẳng sang SQL Server
 
-## Vấn đề cần lưu ý
+Backend hiện đã dùng trực tiếp:
 
-Hiện code backend đọc cấu hình như sau:
+- `UseSqlServer(DefaultConnection)`
 
-- nếu `DatabaseProvider = Sqlite` thì dùng SQLite
-- nếu không có hoặc không phải `Sqlite` thì dùng SQL Server qua `DefaultConnection`
-
-File liên quan:
+trong file:
 
 - [backend/DormitoryManagement/Program.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Program.cs)
 
-Hiện tại:
+Kết luận:
 
-- `appsettings.json` đang trỏ SQL Server
-- nhưng `appsettings.Development.json` vẫn còn:
-  - `"DatabaseProvider": "Sqlite"`
-
-File:
-
-- [backend/DormitoryManagement/appsettings.Development.json](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/appsettings.Development.json)
-
-## Kết luận
-
-Nếu chạy app trong môi trường Development mà không sửa file này, backend có thể ưu tiên SQLite.
-
-## Cách thống nhất hoàn toàn sang SQL Server
-
-Sửa `backend/DormitoryManagement/appsettings.Development.json` thành:
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1433;Database=DormitoryManagement;User Id=sa;Password=Dormitory@2026!;TrustServerCertificate=True;MultipleActiveResultSets=true"
-  },
-  "Jwt": {
-    "Key": "DormitoryManagementSecretKey!@#$2026Dev",
-    "Issuer": "DormitoryHub",
-    "Audience": "DormitoryUsers",
-    "ExpireDays": 7
-  }
-}
-```
-
-Hoặc tối thiểu:
-
-- bỏ `"DatabaseProvider": "Sqlite"`
-- thêm `"DefaultConnection"` trỏ SQL Server
-
-Sau bước này, mọi môi trường chạy local sẽ đồng nhất sang SQL Server.
+- không còn nhánh chọn SQLite trong runtime backend
+- local run và development run đều dùng SQL Server
 
 ---
 
 ## 5. Cách project tự tạo database và bảng
 
-Backend hiện không chạy migration EF theo kiểu chuẩn `dotnet ef database update`.
+Backend hiện không chạy migration EF kiểu chuẩn `dotnet ef database update`.
 
-Thay vào đó, project đang dùng:
+Project đang dùng:
 
 1. `db.Database.EnsureCreatedAsync()`
 2. `DatabaseSchemaUpdater.EnsureFinancialSchemaAsync(db)`
@@ -189,50 +147,38 @@ Khi app khởi động:
 
 - nếu database chưa có, `EnsureCreatedAsync()` sẽ tạo schema cơ bản từ model EF
 - `DatabaseSchemaUpdater` sẽ chạy SQL bổ sung để tạo hoặc cập nhật các bảng cần thêm
-- `DatabaseSeeder` sẽ seed:
-  - roles
-  - users
-  - permissions
-  - room categories
-  - room zones
-  - payment methods
-  - buildings
-  - rooms
-  - students
-  - registrations
-  - contracts
-  - utilities
-  - invoices
-  - room fee profiles
-  - room finance records
+- `DatabaseSeeder` sẽ seed dữ liệu mặc định
 
-## Các bảng / nhóm dữ liệu đã được tạo bổ sung
+## Các bảng / nhóm dữ liệu được bảo đảm có
 
-`DatabaseSchemaUpdater` hiện đảm bảo có các bảng:
-
-- `RoomFeeProfiles`
-- `RoomFinanceRecords`
+- `Users`
+- `Roles`
+- `Permissions`
+- `RolePermissions`
+- `UserPermissions`
+- `Buildings`
+- `Rooms`
 - `RoomCategories`
 - `RoomZones`
 - `PaymentMethodCatalogs`
-
-và các cột liên quan như:
-
-- `Rooms.RoomCategoryId`
-- `Rooms.RoomZoneId`
+- `Students`
+- `Registrations`
+- `Contracts`
+- `Utilities`
+- `Invoices`
+- `RoomFeeProfiles`
+- `RoomFinanceRecords`
 
 ---
 
-## 6. Generate SQL mới nhất / tạo bảng mới nhất
+## 6. Generate schema SQL mới nhất
 
-## Cách thực tế đang dùng trong project
+Trong project này, “generate SQL mới nhất” theo luồng hiện tại nghĩa là:
 
-Để generate schema mới nhất và tạo bảng theo code hiện tại, cách chuẩn của project là:
-
-1. Cấu hình đúng SQL Server trong `appsettings.json` và `appsettings.Development.json`
-2. Xóa database cũ nếu muốn tạo sạch hoàn toàn
-3. Chạy backend
-4. Để `EnsureCreated + DatabaseSchemaUpdater + Seeder` tự tạo schema và seed dữ liệu
+1. cấu hình đúng SQL Server
+2. tạo database rỗng nếu cần
+3. chạy backend
+4. để backend tự tạo schema và seed
 
 ## Quy trình đầy đủ
 
@@ -241,11 +187,9 @@ và các cột liên quan như:
 Đảm bảo:
 
 - SQL Server lắng nghe tại `localhost:1433`
-- database user `sa` đăng nhập được
+- user `sa` đăng nhập được
 
-### Bước 2: tạo hoặc xóa database nếu cần
-
-Nếu muốn generate sạch từ đầu:
+### Bước 2: reset database nếu muốn tạo sạch
 
 ```sql
 IF DB_ID(N'DormitoryManagement') IS NOT NULL
@@ -277,48 +221,30 @@ dotnet run --urls http://127.0.0.1:5101
 
 ### Bước 5: backend tự tạo schema
 
-Ngay khi app khởi động, backend sẽ:
+Ngay khi app chạy:
 
-- tạo database objects còn thiếu
-- tạo bảng mới nhất theo cơ chế hiện tại
-- seed dữ liệu mặc định
-
-## Kết luận
-
-Trong project này, “generate SQL mới nhất” thực tế là:
-
-- chạy backend sau khi cấu hình SQL Server đúng
-- để code tự tạo bảng và seed
-
-Không phải luồng migration EF truyền thống.
+- database objects còn thiếu sẽ được tạo
+- các bảng mở rộng sẽ được bảo đảm có
+- dữ liệu seed mặc định sẽ được thêm
 
 ---
 
-## 7. Nếu muốn lấy script SQL để tạo bảng thủ công
+## 7. Nếu muốn lấy SQL script thủ công
 
-Project hiện đã có sẵn phần SQL quan trọng trong:
+Phần SQL Server bổ sung hiện nằm trong:
 
 - [backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs](/C:/Users/Minhhoangg/Desktop/CODE/project/backend/DormitoryManagement/Services/Infrastructure/DatabaseSchemaUpdater.cs)
 
-Nếu cần cấp script cho DBA hoặc muốn chạy tay:
+Nếu cần chạy tay bằng SSMS:
 
-1. lấy block SQL trong nhánh `db.Database.IsSqlServer()`
-2. chạy bằng SSMS trên database `DormitoryManagement`
+1. mở file này
+2. lấy block SQL trong `EnsureFinancialSchemaAsync`
+3. chạy trên database `DormitoryManagement`
 
-Tuy nhiên cần hiểu rõ:
-
-- script này chủ yếu bổ sung bảng mở rộng
-- schema nền ban đầu vẫn đang dựa vào `EnsureCreatedAsync()`
-
-Nên nếu muốn tạo hoàn toàn bằng SQL tay, cần:
-
-1. hoặc để app chạy 1 lần để tạo nền
-2. hoặc tự viết full script toàn bộ schema
-
-Trong trạng thái hiện tại, cách ổn nhất vẫn là:
+Tuy nhiên cách đúng của project vẫn là:
 
 - tạo database rỗng
-- chạy app một lần
+- chạy backend một lần
 
 ---
 
@@ -334,9 +260,7 @@ dotnet run --urls http://127.0.0.1:5101
 
 ## Frontend
 
-Frontend không cần chạy dev server nếu đã build vào backend.
-
-Nếu muốn build mới:
+Nếu cần build mới:
 
 ```powershell
 cd C:\Users\Minhhoangg\Desktop\CODE\project\frontend
@@ -357,7 +281,7 @@ npm run build
 
 ## 9. Tài khoản seed mặc định
 
-Seed hiện có các tài khoản:
+Seed hiện có:
 
 - `admin` / `admin123`
 - `roomoperator` / `manager123`
@@ -369,7 +293,7 @@ Nguồn:
 
 ---
 
-## 10. Các file quan trọng đã cập nhật
+## 10. Các file quan trọng
 
 ### Frontend
 
@@ -394,13 +318,10 @@ Nguồn:
 
 ## 11. Lưu ý kỹ thuật
 
-1. `appsettings.Development.json` phải được chỉnh sang SQL Server nếu muốn thống nhất hoàn toàn.
+1. Runtime backend hiện chỉ dùng SQL Server.
 2. Cơ chế hiện tại là `EnsureCreated + raw SQL updater + seeder`, không phải EF migration chuẩn.
 3. Nếu thay đổi entity lớn trong tương lai, cần cập nhật:
    - model EF
    - `DatabaseSchemaUpdater`
-   - `DatabaseSeeder` nếu có seed mặc định
-4. Nếu cần quy trình migration chuẩn hơn về lâu dài, nên chuyển dần sang:
-   - `dotnet ef migrations add ...`
-   - `dotnet ef database update`
-
+   - `DatabaseSeeder`
+4. Nếu muốn schema versioning tốt hơn về lâu dài, nên chuyển dần sang EF migration chuẩn.

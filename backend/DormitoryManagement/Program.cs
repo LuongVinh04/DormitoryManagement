@@ -39,13 +39,6 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var databaseProvider = builder.Configuration["DatabaseProvider"];
-    if (string.Equals(databaseProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-    {
-        options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection"));
-        return;
-    }
-
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
