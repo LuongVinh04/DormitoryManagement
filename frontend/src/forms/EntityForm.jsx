@@ -29,7 +29,7 @@ function renderInputField(field, value, lookupItems, onChange) {
     return (
       <select value={value} onChange={(event) => onChange(field.name, event.target.value)}>
         {field.allowEmpty ? <option value="">Không chọn</option> : null}
-        {lookupItems.map((item) => <option key={item.id} value={item.id}>{field.optionLabel(item)}</option>)}
+        {lookupItems.map((item) => <option key={item.id} value={field.optionValue ? field.optionValue(item) : item.id}>{field.optionLabel(item)}</option>)}
       </select>
     )
   }

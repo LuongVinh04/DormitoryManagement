@@ -10,7 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -35,13 +39,6 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    var databaseProvider = builder.Configuration["DatabaseProvider"];
-    if (string.Equals(databaseProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-    {
-        options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection"));
-        return;
-    }
-
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 

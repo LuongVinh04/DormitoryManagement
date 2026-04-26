@@ -303,7 +303,7 @@ function App() {
               </>
             }
           >
-            <EntityForm modal={modal} lookups={lookups} updateModalField={updateModalField} errors={formErrors} />
+            <EntityForm modal={modal} lookups={{ ...lookups, users: data.users || [] }} updateModalField={updateModalField} errors={formErrors} />
           </ModalCard>
         ) : null}
       </main>

@@ -100,7 +100,7 @@ export function useDormitoryData() {
       setDashboard(dashboardJson)
       setNotifications(dashboardJson.notifications ?? [])
       setFinanceSummary(financeSummaryJson)
-      setLookups(lookupJson)
+      setLookups({ ...lookupJson, users: nextData.users ?? [] })
       setData(nextData)
     } catch (loadError) {
       setError(loadError.message)
