@@ -809,12 +809,16 @@ textarea {
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
+  position: relative;
 }
 
 .field span {
-  color: #475569;
-  font-size: 0.92rem;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.25;
 }
 
 .field-error {
@@ -827,12 +831,52 @@ textarea {
 select,
 input,
 textarea {
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(255, 255, 255, 0.92);
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+  border-radius: 10px;
+  background: #ffffff;
   color: #0f172a;
   font: inherit;
+  line-height: 1.4;
+  outline: none;
+  position: relative;
+  z-index: 1;
+}
+
+textarea {
+  min-height: 112px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+input {
+  cursor: text;
+}
+
+textarea {
+  cursor: text;
+}
+
+select {
+  cursor: pointer;
+}
+
+.search-input:focus,
+select:focus,
+input:focus,
+textarea:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  background: #ffffff;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  background: #f1f5f9;
 }
 
 .checkbox-row {
@@ -1371,6 +1415,7 @@ thead th {
 }
 
 .global-loading.active {
+  pointer-events: auto;
   opacity: 1;
 }
 
@@ -1545,4 +1590,92 @@ thead th {
   .section-banner-actions > * {
     width: 100%;
   }
+}
+
+.login-wrapper {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(15, 118, 110, 0.12), transparent 28%),
+    linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+}
+
+.login-card {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 22px;
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+}
+
+.login-header {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.login-logo {
+  width: 64px;
+  height: 64px;
+}
+
+.login-kicker {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.login-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.login-header p {
+  margin: 0;
+  max-width: 32ch;
+  color: #475569;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-form .form-group {
+  display: grid;
+  gap: 7px;
+}
+
+.login-form label {
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.login-form input {
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  background: #ffffff;
+}
+
+.login-button {
+  min-height: 48px;
+  border-radius: 10px;
+  margin-top: 4px;
 }
