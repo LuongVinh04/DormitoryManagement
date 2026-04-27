@@ -1,5 +1,26 @@
+# Visual Studio
 .vs/
-bin/
-obj/
+[Bb]in/
+[Oo]bj/
 *.user
 *.suo
+*.sln.docstates
+
+# Build and node modules
+node_modules/
+dist/
+build/
+temp/
+
+# Frontend assets in backend
+backend/DormitoryManagement/wwwroot/assets/
+backend/DormitoryManagement/wwwroot/index.html
+
+# Local configuration
+*.local.json
+*.local
+appsettings.Development.json
+
+# Misc
+.DS_Store
+Thumbs.db

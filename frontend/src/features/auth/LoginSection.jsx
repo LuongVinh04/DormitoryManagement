@@ -19,7 +19,7 @@ export function LoginSection() {
       setLoading(true)
       setError('')
       await login(username, password)
-      // will trigger redirect based on AuthContext update
+      
       if (window.location.pathname === '/login') {
         window.location.href = '/'
       }
@@ -39,8 +39,10 @@ export function LoginSection() {
           <h2>Đăng nhập</h2>
           <p>Hệ thống quản lý nội trú thông minh Dormitory Hub.</p>
         </div>
+
         <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="feedback error">{error}</div>}
+          
           <div className="form-group">
             <label>Tài khoản</label>
             <input
@@ -48,9 +50,11 @@ export function LoginSection() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={loading}
+              placeholder="Nhập tài khoản"
               autoFocus
             />
           </div>
+
           <div className="form-group">
             <label>Mật khẩu</label>
             <input
@@ -58,14 +62,15 @@ export function LoginSection() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              placeholder="Nhập mật khẩu"
             />
           </div>
+
           <button type="submit" disabled={loading} className="primary-button login-button">
             {loading ? 'Đang xác thực...' : 'Đăng nhập'}
           </button>
         </form>
       </div>
-
     </div>
   )
 }
