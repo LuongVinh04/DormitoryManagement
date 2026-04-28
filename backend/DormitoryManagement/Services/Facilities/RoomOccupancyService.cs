@@ -13,7 +13,16 @@ public static class RoomOccupancyService
             return;
         }
 
-        room.CurrentOccupancy = await db.Students.CountAsync(x => x.RoomId == roomId);
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
+        room.CurrentOccupancy = await db.Students.CountAsync(x =>
+            x.RoomId == roomId &&
+            x.Contracts.Any(c =>
+                c.Status == "Active" &&
+                c.StartDate < tomorrow &&
+                c.EndDate >= today));
+
         room.Status = room.CurrentOccupancy switch
         {
             0 => "Available",
@@ -21,5 +30,14 @@ public static class RoomOccupancyService
             _ => "Occupied"
         };
         room.UpdatedAt = DateTime.UtcNow;
+    }
+
+    public static async Task RecalculateAllRoomsAsync(AppDbContext db)
+    {
+        var roomIds = await db.Rooms.Select(x => x.Id).ToListAsync();
+        foreach (var roomId in roomIds)
+        {
+            await RecalculateRoomAsync(db, roomId);
+        }
     }
 }

@@ -435,6 +435,11 @@
   color: #e11d48;
 }
 
+.primary-button.danger {
+  background: linear-gradient(135deg, #be123c, #e11d48);
+  box-shadow: 0 14px 30px rgba(225, 29, 72, 0.22);
+}
+
 .primary-button:hover,
 .secondary-button:hover,
 .ghost-button:hover,
@@ -465,6 +470,30 @@
   background: rgba(255, 255, 255, 0.78);
   color: #475569;
   font-weight: 800;
+}
+
+.route-error-card {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid rgba(225, 29, 72, 0.18);
+  border-radius: 24px;
+  background: rgba(255, 241, 242, 0.92);
+  color: #881337;
+}
+
+.route-error-card strong {
+  font-size: 1.1rem;
+  color: #881337;
+}
+
+.route-error-card p {
+  margin: 0;
+  color: #9f1239;
+}
+
+.route-error-card .primary-button {
+  justify-self: start;
 }
 
 .status-toast {
@@ -814,11 +843,19 @@ textarea {
   position: relative;
 }
 
-.field span {
+.field label {
   color: #334155;
   font-size: 0.88rem;
   font-weight: 650;
   line-height: 1.25;
+  cursor: pointer;
+  user-select: none;
+}
+
+.field-control-shell {
+  width: 100%;
+  min-width: 0;
+  cursor: text;
 }
 
 .field-error {
@@ -832,10 +869,10 @@ select,
 input,
 textarea {
   width: 100%;
-  min-height: 46px;
-  padding: 0 14px;
+  min-height: 52px;
+  padding: 0 16px;
   border: 1px solid rgba(100, 116, 139, 0.28);
-  border-radius: 10px;
+  border-radius: 14px;
   background: #ffffff;
   color: #0f172a;
   font: inherit;
@@ -843,11 +880,13 @@ textarea {
   outline: none;
   position: relative;
   z-index: 1;
+  display: block;
+  touch-action: manipulation;
 }
 
 textarea {
   min-height: 112px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   resize: vertical;
 }
 
@@ -861,6 +900,21 @@ textarea {
 
 select {
   cursor: pointer;
+  appearance: auto;
+}
+
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  cursor: text;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 8px;
+  margin-right: -6px;
 }
 
 .search-input:focus,
@@ -889,6 +943,36 @@ textarea:disabled {
 .checkbox-row input {
   width: 18px;
   height: 18px;
+  min-height: 18px;
+  padding: 0;
+}
+
+.evidence-url-field {
+  display: grid;
+  gap: 6px;
+}
+
+.evidence-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.evidence-url-row input {
+  flex: 1;
+}
+
+.evidence-url-field small {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.evidence-url-field a {
+  color: #0f766e;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .table-wrap {
@@ -1067,7 +1151,10 @@ thead th {
   .form-grid,
   .operation-cards,
   .finance-highlight-grid,
-  .finance-status-grid {
+  .finance-status-grid,
+  .compact-auth-grid,
+  .message-console,
+  .finance-share-summary {
     grid-template-columns: 1fr;
   }
 
@@ -1679,4 +1766,414 @@ thead th {
   min-height: 48px;
   border-radius: 10px;
   margin-top: 4px;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(226, 232, 240, 0.62);
+}
+
+.auth-tabs button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-tabs button.active {
+  color: #f8fafc;
+  background: linear-gradient(135deg, #0f766e, #1d4ed8);
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.18);
+}
+
+.compact-auth-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.section-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.section-toolbar.split {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.student-filter-bar {
+  display: flex;
+  flex: 1 1 620px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #334155;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filter-pill span {
+  min-width: 24px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+  color: #0f172a;
+  text-align: center;
+  font-size: 0.78rem;
+}
+
+.filter-pill.active {
+  color: #f8fafc;
+  border-color: transparent;
+  background: linear-gradient(135deg, #0f766e, #1d4ed8);
+  box-shadow: 0 12px 26px rgba(29, 78, 216, 0.16);
+}
+
+.filter-pill.active span {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.modal-feedback {
+  margin-top: 16px;
+}
+
+.stacked-actions,
+.share-payment-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.message-console {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.message-list {
+  display: grid;
+  gap: 12px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.message-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.message-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.message-card strong,
+.message-card p {
+  overflow-wrap: anywhere;
+}
+
+.message-card span,
+.muted-line {
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.message-card p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.finance-share-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.finance-share-summary .secondary-button {
+  align-self: stretch;
+}
+
+.finance-share-table input,
+.finance-share-table select {
+  min-width: 150px;
+}
+
+.muted-line {
+  display: block;
+  margin-top: 4px;
+}
+
+/* ── Student Portal ──────────────────────────────────────────────── */
+
+.student-portal {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.student-portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f766e, #1d4ed8);
+  color: #f8fafc;
+}
+
+.student-portal-header h1 {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+}
+
+.student-portal-header p {
+  margin: 0;
+  opacity: 0.85;
+  font-size: 0.95rem;
+}
+
+.student-portal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.student-portal-actions .secondary-button {
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.student-portal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.student-portal-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  padding: 20px 24px;
+  backdrop-filter: blur(10px);
+}
+
+.student-portal-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.student-portal-card h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.student-portal-card h3 {
+  margin: 16px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.student-portal-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.student-portal-card-header h2 {
+  margin: 0;
+}
+
+.student-portal-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.info-row span {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.info-row strong {
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.student-portal-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.student-portal-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.student-portal-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.student-portal-card {
+  overflow-x: auto;
+}
+
+.roommate-finance-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.primary-button.compact,
+.secondary-button.compact,
+.ghost-button.compact {
+  min-height: 34px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.student-portal-card table th,
+.student-portal-card table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.student-portal-card table th {
+  font-weight: 700;
+  color: #334155;
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.table-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.table-badge.emerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.table-badge.amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.table-badge.rose {
+  background: rgba(244, 63, 94, 0.12);
+  color: #be123c;
+}
+
+@media (max-width: 768px) {
+  .student-portal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-portal-header {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .student-portal-info {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Chat Bubbles ────────────────────────────────────────────────── */
+
+.chat-bubble {
+  padding: 8px 14px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+  max-width: 80%;
+}
+
+.chat-bubble.sent {
+  background: rgba(37, 99, 235, 0.1);
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bubble.received {
+  background: rgba(241, 245, 249, 0.8);
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.chat-meta strong {
+  color: #334155;
+}
+
+.chat-bubble p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }

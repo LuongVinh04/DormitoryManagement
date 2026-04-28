@@ -15,6 +15,10 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
     [HttpGet("buildings")]
     public async Task<IActionResult> GetBuildings()
     {
+        await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await RoomOccupancyService.RecalculateAllRoomsAsync(db);
+        await db.SaveChangesAsync();
+
         var data = await db.Buildings
             .Include(x => x.Rooms)
             .OrderBy(x => x.Code)
@@ -93,6 +97,10 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
     [HttpGet("rooms")]
     public async Task<IActionResult> GetRooms()
     {
+        await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await RoomOccupancyService.RecalculateAllRoomsAsync(db);
+        await db.SaveChangesAsync();
+
         var data = await db.Rooms
             .Include(x => x.Building)
             .Include(x => x.RoomCategory)
@@ -126,16 +134,32 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
     [HttpGet("rooms/{id:int}/overview")]
     public async Task<IActionResult> GetRoomOverview(int id)
     {
+        await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await RoomOccupancyService.RecalculateRoomAsync(db, id);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
         var room = await db.Rooms
             .Include(x => x.Building)
             .Include(x => x.RoomCategory)
             .Include(x => x.RoomZone)
-            .Include(x => x.Students.OrderBy(s => s.StudentCode))
             .Include(x => x.Utilities.OrderByDescending(u => u.BillingMonth))
             .Include(x => x.Invoices.OrderByDescending(i => i.BillingMonth))
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (room is null) return NotFound();
+
+        var visibleStudents = await db.Students
+            .Where(x =>
+                x.RoomId == id &&
+                x.Contracts.Any(c =>
+                    c.Status == "Active" &&
+                    c.StartDate < tomorrow &&
+                    c.EndDate >= today))
+            .OrderBy(x => x.StudentCode)
+            .ToListAsync();
 
         return Ok(new
         {
@@ -158,7 +182,7 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
                 room.Status,
                 availableSlots = room.Capacity - room.CurrentOccupancy
             },
-            students = room.Students.Select(x => new
+            students = visibleStudents.Select(x => new
             {
                 x.Id,
                 x.StudentCode,
@@ -195,8 +219,16 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         var roomExists = await db.Rooms.AnyAsync(x => x.Id == id);
         if (!roomExists) return NotFound();
 
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
         var students = await db.Students
-            .Where(x => x.RoomId == id)
+            .Where(x =>
+                x.RoomId == id &&
+                x.Contracts.Any(c =>
+                    c.Status == "Active" &&
+                    c.StartDate < tomorrow &&
+                    c.EndDate >= today))
             .OrderBy(x => x.StudentCode)
             .Select(x => new
             {

@@ -149,7 +149,7 @@ export async function apiFetch(url, options = {}) {
   const token = localStorage.getItem('dormitory_token')
   const headers = { ...options.headers }
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`
   }
 
   try {

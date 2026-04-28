@@ -2,6 +2,7 @@ using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Models;
 using DormitoryManagement.Services.Facilities;
+using DormitoryManagement.Services.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,11 +15,56 @@ public class PeopleController(AppDbContext db) : ControllerBase
     [HttpGet("students")]
     public async Task<IActionResult> GetStudents()
     {
-        var data = await db.Students
+        await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        var cancelCutoff = today.AddDays(-3);
+
+        var students = await db.Students
             .Include(x => x.Room)
             .ThenInclude(x => x!.Building)
+            .Include(x => x.Contracts)
             .OrderBy(x => x.StudentCode)
-            .Select(x => new
+            .ToListAsync();
+
+        var accountMap = await db.Users
+            .Where(x => x.StudentId != null)
+            .ToDictionaryAsync(x => x.StudentId!.Value, x => x.Username);
+
+        var data = students.Select(x =>
+        {
+            var latestContract = x.Contracts
+                .OrderByDescending(c => c.EndDate)
+                .ThenByDescending(c => c.StartDate)
+                .FirstOrDefault();
+
+            var validContract = x.Contracts
+                .Where(c => c.Status == "Active" && c.StartDate.Date <= today && c.EndDate.Date >= today)
+                .OrderByDescending(c => c.EndDate)
+                .FirstOrDefault();
+
+            var activeExpiredContract = x.Contracts
+                .Where(c => c.Status == "Active" && c.EndDate.Date < today)
+                .OrderByDescending(c => c.EndDate)
+                .FirstOrDefault();
+
+            var isExpiredInGrace = activeExpiredContract is not null && activeExpiredContract.EndDate.Date > cancelCutoff;
+            var hasValidContract = validContract is not null;
+            var hasAccount = accountMap.TryGetValue(x.Id, out var accountUsername);
+            var isVisibleInRoom = x.RoomId != null && hasValidContract;
+
+            var contractState = hasValidContract
+                ? "Valid"
+                : isExpiredInGrace
+                    ? "ExpiredGrace"
+                    : latestContract is null
+                        ? "NoContract"
+                        : latestContract.Status == "Cancelled"
+                            ? "Cancelled"
+                            : "Expired";
+
+            return new
             {
                 x.Id,
                 x.StudentCode,
@@ -33,11 +79,28 @@ public class PeopleController(AppDbContext db) : ControllerBase
                 x.EmergencyContact,
                 x.Status,
                 x.RoomId,
-                roomNumber = x.Room != null ? x.Room.RoomNumber : null,
-                buildingName = x.Room != null ? x.Room.Building!.Name : null,
+                physicalRoomNumber = x.Room?.RoomNumber,
+                roomNumber = isVisibleInRoom ? x.Room?.RoomNumber : null,
+                buildingName = isVisibleInRoom ? x.Room?.Building?.Name : null,
+                hasAccount,
+                accountUsername = hasAccount ? accountUsername : null,
+                canAssignRoom = hasValidContract,
+                isVisibleInRoom,
+                contractState,
+                contractStatus = latestContract?.Status,
+                contractEndDate = latestContract?.EndDate,
+                contractRoomId = validContract?.RoomId,
+                contractWarning = contractState switch
+                {
+                    "Valid" => "Hợp đồng hiệu lực",
+                    "ExpiredGrace" => "Hợp đồng đã hết hạn, sinh viên tạm ẩn khỏi phòng và cần gia hạn trong 3 ngày",
+                    "NoContract" => "Chưa có hợp đồng lưu trú",
+                    "Cancelled" => "Hợp đồng đã bị hủy",
+                    _ => "Hợp đồng đã hết hạn"
+                },
                 createdAt = x.CreatedAt
-            })
-            .ToListAsync();
+            };
+        }).ToList();
 
         return Ok(data);
     }
@@ -98,9 +161,29 @@ public class PeopleController(AppDbContext db) : ControllerBase
     [HttpPost("students")]
     public async Task<IActionResult> CreateStudent([FromBody] StudentRequest request)
     {
+        var studentCode = request.StudentCode.Trim();
+        var username = string.IsNullOrWhiteSpace(request.AccountUsername)
+            ? studentCode.ToLowerInvariant()
+            : request.AccountUsername.Trim();
+        var password = string.IsNullOrWhiteSpace(request.AccountPassword)
+            ? $"{studentCode}@123"
+            : request.AccountPassword;
+
+        if (await db.Students.AnyAsync(x => x.StudentCode == studentCode))
+        {
+            return BadRequest(new { message = "Mã sinh viên đã tồn tại." });
+        }
+
+        if (await db.Users.AnyAsync(x => x.Username == username))
+        {
+            return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
         var entity = new Students
         {
-            StudentCode = request.StudentCode.Trim(),
+            StudentCode = studentCode,
             Name = request.Name.Trim(),
             Gender = request.Gender.Trim(),
             DateOfBirth = request.DateOfBirth,
@@ -110,20 +193,51 @@ public class PeopleController(AppDbContext db) : ControllerBase
             ClassName = request.ClassName.Trim(),
             Address = request.Address.Trim(),
             EmergencyContact = request.EmergencyContact.Trim(),
-            Status = request.Status.Trim(),
-            RoomId = request.RoomId
+            Status = string.IsNullOrWhiteSpace(request.Status) ? "Waiting" : request.Status.Trim(),
+            RoomId = null // Phòng chỉ được gán qua quy trình điều phối
         };
 
         db.Students.Add(entity);
         await db.SaveChangesAsync();
 
-        if (entity.RoomId.HasValue)
+        var studentRole = await db.Roles.FirstOrDefaultAsync(x => x.Name == "Student");
+        if (studentRole is null)
         {
-            await RoomOccupancyService.RecalculateRoomAsync(db, entity.RoomId.Value);
+            studentRole = new Roles
+            {
+                Name = "Student",
+                Description = "Tài khoản sinh viên"
+            };
+            db.Roles.Add(studentRole);
             await db.SaveChangesAsync();
         }
 
-        return Ok(entity);
+        var account = new Users
+        {
+            Username = username,
+            FullName = entity.Name,
+            Email = entity.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            RoleId = studentRole.Id,
+            StudentId = entity.Id,
+            IsActive = true
+        };
+
+        db.Users.Add(account);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new
+        {
+            student = entity,
+            account = new
+            {
+                account.Id,
+                account.Username,
+                account.Email,
+                account.StudentId
+            }
+        });
     }
 
     [HttpPut("students/{id:int}")]
@@ -132,7 +246,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
         var entity = await db.Students.FindAsync(id);
         if (entity is null) return NotFound();
 
-        var oldRoomId = entity.RoomId;
+        // Không cho phép thay đổi RoomId qua profile update – chỉ đổi qua điều phối
         entity.StudentCode = request.StudentCode.Trim();
         entity.Name = request.Name.Trim();
         entity.Gender = request.Gender.Trim();
@@ -144,20 +258,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
         entity.Address = request.Address.Trim();
         entity.EmergencyContact = request.EmergencyContact.Trim();
         entity.Status = request.Status.Trim();
-        entity.RoomId = request.RoomId;
         entity.UpdatedAt = DateTime.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        if (oldRoomId.HasValue)
-        {
-            await RoomOccupancyService.RecalculateRoomAsync(db, oldRoomId.Value);
-        }
-
-        if (entity.RoomId.HasValue)
-        {
-            await RoomOccupancyService.RecalculateRoomAsync(db, entity.RoomId.Value);
-        }
 
         await db.SaveChangesAsync();
         return Ok(entity);
@@ -258,6 +359,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
                 x.Email,
                 x.RoleId,
                 roleName = x.Role!.Name,
+                x.StudentId,
                 x.IsActive,
                 x.CreatedAt
             })

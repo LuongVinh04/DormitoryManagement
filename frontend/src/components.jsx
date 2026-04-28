@@ -40,7 +40,11 @@ export function Panel({
           </div>
         ) : null}
       </div>
-      {collapsed ? <div className="panel-collapsed-note">Khối chức năng đang được thu gọn để tối ưu không gian làm việc.</div> : <div className="panel-body">{children}</div>}
+      {collapsed ? (
+        <div className="panel-collapsed-note">Khối chức năng đang được thu gọn để tối ưu không gian làm việc.</div>
+      ) : (
+        <div className="panel-body">{children}</div>
+      )}
     </section>
   )
 }

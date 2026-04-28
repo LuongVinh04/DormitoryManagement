@@ -16,5 +16,6 @@ namespace Dormitory.Models.DTOS.DataResponse
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
+        public int? StudentId { get; set; }
     }
 }

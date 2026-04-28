@@ -107,3 +107,17 @@ public class RoomFinancePaymentRequest
     public string PaymentNote { get; set; } = string.Empty;
     public string RecordedBy { get; set; } = string.Empty;
 }
+
+public class StudentShareAdjustRequest
+{
+    public decimal ExpectedAmount { get; set; }
+    public string Note { get; set; } = string.Empty;
+}
+
+public class StudentSharePaymentRequest
+{
+    public decimal PaidAmount { get; set; }
+    public DateTime? PaidDate { get; set; }
+    public string PaymentMethod { get; set; } = string.Empty;
+    public string Note { get; set; } = string.Empty;
+}

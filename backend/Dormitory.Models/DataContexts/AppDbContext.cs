@@ -24,6 +24,9 @@ namespace Dormitory.Models.DataContexts
         public DbSet<Invoices> Invoices { get; set; }
         public DbSet<RoomFeeProfile> RoomFeeProfiles { get; set; }
         public DbSet<RoomFinanceRecord> RoomFinanceRecords { get; set; }
+        public DbSet<RoomFinanceStudentShare> RoomFinanceStudentShares { get; set; }
+        public DbSet<RoomTransferRequest> RoomTransferRequests { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -187,6 +190,12 @@ namespace Dormitory.Models.DataContexts
                 .HasForeignKey(x => x.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Users>()
+                .HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<RolePermissions>()
                 .HasOne(x => x.Role)
                 .WithMany(x => x.RolePermissions)
@@ -210,6 +219,54 @@ namespace Dormitory.Models.DataContexts
                 .WithMany(x => x.UserPermissions)
                 .HasForeignKey(x => x.PermissionId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RoomFinanceStudentShare>()
+                .HasOne(x => x.RoomFinanceRecord)
+                .WithMany(x => x.StudentShares)
+                .HasForeignKey(x => x.RoomFinanceRecordId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RoomFinanceStudentShare>()
+                .HasOne(x => x.Student)
+                .WithMany(x => x.FinanceShares)
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RoomFinanceStudentShare>()
+                .HasOne(x => x.Invoice)
+                .WithMany()
+                .HasForeignKey(x => x.InvoiceId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<RoomTransferRequest>()
+                .HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RoomTransferRequest>()
+                .HasOne(x => x.CurrentRoom)
+                .WithMany()
+                .HasForeignKey(x => x.CurrentRoomId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RoomTransferRequest>()
+                .HasOne(x => x.DesiredRoom)
+                .WithMany()
+                .HasForeignKey(x => x.DesiredRoomId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(x => x.Receiver)
+                .WithMany()
+                .HasForeignKey(x => x.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

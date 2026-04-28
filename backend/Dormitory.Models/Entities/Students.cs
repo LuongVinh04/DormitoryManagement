@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,5 +25,6 @@ namespace Dormitory.Models.Entities
         public ICollection<Registrations> Registrations { get; set; } = new List<Registrations>();
         public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
         public ICollection<Invoices> Invoices { get; set; } = new List<Invoices>();
+        public ICollection<RoomFinanceStudentShare> FinanceShares { get; set; } = new List<RoomFinanceStudentShare>();
     }
 }

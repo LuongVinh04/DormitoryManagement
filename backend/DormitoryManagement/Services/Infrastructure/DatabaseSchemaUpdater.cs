@@ -137,6 +137,75 @@ public static class DatabaseSchemaUpdater
 
             IF COL_LENGTH('dbo.Rooms', 'RoomZoneId') IS NULL
                 ALTER TABLE [dbo].[Rooms] ADD [RoomZoneId] INT NULL;
+
+            IF COL_LENGTH('dbo.Users', 'StudentId') IS NULL
+                ALTER TABLE [dbo].[Users] ADD [StudentId] INT NULL;
+
+            IF OBJECT_ID(N'dbo.RoomFinanceStudentShares', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[RoomFinanceStudentShares]
+                (
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [RoomFinanceRecordId] INT NOT NULL,
+                    [StudentId] INT NOT NULL,
+                    [InvoiceId] INT NULL,
+                    [ExpectedAmount] DECIMAL(18,2) NOT NULL DEFAULT(0),
+                    [PaidAmount] DECIMAL(18,2) NOT NULL DEFAULT(0),
+                    [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid'),
+                    [PaidDate] DATETIME2 NULL,
+                    [PaymentMethod] NVARCHAR(64) NOT NULL DEFAULT(N''),
+                    [Note] NVARCHAR(500) NOT NULL DEFAULT(N''),
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT(GETUTCDATE()),
+                    [UpdatedAt] DATETIME2 NULL,
+                    CONSTRAINT [FK_RoomFinanceStudentShares_RoomFinanceRecords] FOREIGN KEY ([RoomFinanceRecordId]) REFERENCES [dbo].[RoomFinanceRecords]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_RoomFinanceStudentShares_Students] FOREIGN KEY ([StudentId]) REFERENCES [dbo].[Students]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_RoomFinanceStudentShares_Invoices] FOREIGN KEY ([InvoiceId]) REFERENCES [dbo].[Invoices]([Id]) ON DELETE NO ACTION
+                );
+            END
+
+            IF COL_LENGTH('dbo.RoomFinanceStudentShares', 'InvoiceId') IS NULL
+                ALTER TABLE [dbo].[RoomFinanceStudentShares] ADD [InvoiceId] INT NULL;
+
+            IF OBJECT_ID(N'dbo.FK_RoomFinanceStudentShares_Invoices', N'F') IS NULL
+                ALTER TABLE [dbo].[RoomFinanceStudentShares]
+                ADD CONSTRAINT [FK_RoomFinanceStudentShares_Invoices]
+                FOREIGN KEY ([InvoiceId]) REFERENCES [dbo].[Invoices]([Id]) ON DELETE NO ACTION;
+
+            IF OBJECT_ID(N'dbo.RoomTransferRequests', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[RoomTransferRequests]
+                (
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [StudentId] INT NOT NULL,
+                    [CurrentRoomId] INT NOT NULL,
+                    [DesiredRoomId] INT NOT NULL,
+                    [Reason] NVARCHAR(1000) NOT NULL DEFAULT(N''),
+                    [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Pending'),
+                    [DecisionDate] DATETIME2 NULL,
+                    [DecisionNote] NVARCHAR(500) NOT NULL DEFAULT(N''),
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT(GETUTCDATE()),
+                    [UpdatedAt] DATETIME2 NULL,
+                    CONSTRAINT [FK_RoomTransferRequests_Students] FOREIGN KEY ([StudentId]) REFERENCES [dbo].[Students]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_RoomTransferRequests_CurrentRoom] FOREIGN KEY ([CurrentRoomId]) REFERENCES [dbo].[Rooms]([Id]) ON DELETE NO ACTION,
+                    CONSTRAINT [FK_RoomTransferRequests_DesiredRoom] FOREIGN KEY ([DesiredRoomId]) REFERENCES [dbo].[Rooms]([Id]) ON DELETE NO ACTION
+                );
+            END
+
+            IF OBJECT_ID(N'dbo.ChatMessages', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ChatMessages]
+                (
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [SenderId] INT NOT NULL,
+                    [ReceiverId] INT NOT NULL,
+                    [Content] NVARCHAR(2000) NOT NULL DEFAULT(N''),
+                    [IsRead] BIT NOT NULL DEFAULT(0),
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT(GETUTCDATE()),
+                    [UpdatedAt] DATETIME2 NULL,
+                    CONSTRAINT [FK_ChatMessages_Sender] FOREIGN KEY ([SenderId]) REFERENCES [dbo].[Users]([Id]) ON DELETE NO ACTION,
+                    CONSTRAINT [FK_ChatMessages_Receiver] FOREIGN KEY ([ReceiverId]) REFERENCES [dbo].[Users]([Id]) ON DELETE NO ACTION
+                );
+            END
             """);
     }
 }

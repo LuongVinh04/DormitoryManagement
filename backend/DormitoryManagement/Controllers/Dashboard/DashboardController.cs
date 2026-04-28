@@ -1,4 +1,6 @@
 using Dormitory.Models.DataContexts;
+using DormitoryManagement.Services.Facilities;
+using DormitoryManagement.Services.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +13,10 @@ public class DashboardController(AppDbContext db) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetDashboard()
     {
+        await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await RoomOccupancyService.RecalculateAllRoomsAsync(db);
+        await db.SaveChangesAsync();
+
         var allInvoices = await db.Invoices.AsNoTracking().ToListAsync();
         var financeRecords = await db.RoomFinanceRecords.AsNoTracking().ToListAsync();
         var rooms = await db.Rooms.Include(x => x.Building).AsNoTracking().ToListAsync();
@@ -33,8 +39,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var availableBeds = rooms.Sum(x => x.Capacity - x.CurrentOccupancy);
         var totalStudents = students.Count;
         var waitingStudents = students.Count(x => x.Status is "Waiting" or "Pending");
-        var activeContracts = contracts.Count(x => x.Status == "Active");
-        var expiringContracts = contracts.Count(x => x.EndDate <= DateTime.Today.AddDays(45) && x.Status == "Active");
+        var activeContracts = contracts.Count(x => x.Status == "Active" && x.StartDate.Date <= DateTime.Today && x.EndDate.Date >= DateTime.Today);
+        var expiringContracts = contracts.Count(x => x.EndDate <= DateTime.Today.AddDays(45) && x.EndDate >= DateTime.Today && x.Status == "Active");
         var unpaidInvoices = financeRecords.Count > 0
             ? financeRecords.Count(x => x.Status != "Paid")
             : allInvoices.Count(x => x.Status != "Paid");

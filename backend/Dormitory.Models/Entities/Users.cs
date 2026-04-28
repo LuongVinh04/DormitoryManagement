@@ -13,9 +13,11 @@ namespace Dormitory.Models.Entities
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
         public int RoleId { get; set; }
+        public int? StudentId { get; set; }
         public bool IsActive { get; set; } = true;
 
         public Roles? Role { get; set; }
+        public Students? Student { get; set; }
         public ICollection<UserPermissions> UserPermissions { get; set; } = new List<UserPermissions>();
     }
 }

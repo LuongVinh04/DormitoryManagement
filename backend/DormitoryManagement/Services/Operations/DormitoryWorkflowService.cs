@@ -1,4 +1,4 @@
-using Dormitory.Models.DataContexts;
+﻿using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Services.Facilities;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +7,48 @@ namespace DormitoryManagement.Services.Operations;
 
 public static class DormitoryWorkflowService
 {
+    public static async Task ApplyContractExpiryRulesAsync(AppDbContext db)
+    {
+        var today = DateTime.Today;
+        var cancelCutoff = today.AddDays(-3);
+
+        var contractsToCancel = await db.Contracts
+            .Include(x => x.Student)
+            .Where(x =>
+                x.Status == "Active" &&
+                x.EndDate <= cancelCutoff)
+            .ToListAsync();
+
+        if (contractsToCancel.Count == 0)
+        {
+            return;
+        }
+
+        var affectedRoomIds = contractsToCancel
+            .Where(x => x.Student?.RoomId != null)
+            .Select(x => x.Student!.RoomId!.Value)
+            .Distinct()
+            .ToList();
+
+        foreach (var contract in contractsToCancel)
+        {
+            contract.Status = "Cancelled";
+            contract.UpdatedAt = DateTime.UtcNow;
+
+            if (contract.Student is not null)
+            {
+                contract.Student.RoomId = null;
+                contract.Student.Status = "Waiting";
+                contract.Student.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        foreach (var roomId in affectedRoomIds)
+        {
+            await RoomOccupancyService.RecalculateRoomAsync(db, roomId);
+        }
+    }
+
     public static async Task<(bool Success, string? Message, Students? Student, Rooms? Room)> AssignStudentToRoomAsync(
         AppDbContext db,
         int studentId,
@@ -14,6 +56,8 @@ public static class DormitoryWorkflowService
         string status,
         string note)
     {
+        await ApplyContractExpiryRulesAsync(db);
+
         var student = await db.Students.FirstOrDefaultAsync(x => x.Id == studentId);
         var room = await db.Rooms.Include(x => x.Building).FirstOrDefaultAsync(x => x.Id == roomId);
 
@@ -132,17 +176,12 @@ public static class DormitoryWorkflowService
         registration.Note = string.IsNullOrWhiteSpace(note) ? "Đã duyệt đăng ký nội trú." : note.Trim();
         registration.UpdatedAt = DateTime.UtcNow;
 
-        var assignResult = await AssignStudentToRoomAsync(db, registration.StudentId, registration.RoomId, "Active", registration.Note);
-        if (!assignResult.Success)
-        {
-            return (false, assignResult.Message);
-        }
-
         var room = await db.Rooms.FirstAsync(x => x.Id == registration.RoomId);
         var contractExists = await db.Contracts.AnyAsync(x =>
             x.StudentId == registration.StudentId &&
             x.RoomId == registration.RoomId &&
-            x.Status == "Active");
+            x.Status == "Active" &&
+            x.EndDate >= decisionDate.Date);
 
         if (!contractExists)
         {
@@ -157,6 +196,13 @@ public static class DormitoryWorkflowService
                 EndDate = decisionDate.Date.AddMonths(12),
                 Status = "Active"
             });
+            await db.SaveChangesAsync();
+        }
+
+        var assignResult = await AssignStudentToRoomAsync(db, registration.StudentId, registration.RoomId, "Active", registration.Note);
+        if (!assignResult.Success)
+        {
+            return (false, assignResult.Message);
         }
 
         return (true, null);
@@ -202,8 +248,17 @@ public static class DormitoryWorkflowService
             return (false, "Không tìm thấy kỳ điện nước.", null);
         }
 
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
         var students = await db.Students
-            .Where(x => x.RoomId == utility.RoomId && x.Status != "Inactive")
+            .Where(x =>
+                x.RoomId == utility.RoomId &&
+                x.Status != "Inactive" &&
+                x.Contracts.Any(c =>
+                    c.Status == "Active" &&
+                    c.StartDate < tomorrow &&
+                    c.EndDate >= today))
             .OrderBy(x => x.StudentCode)
             .ToListAsync();
         var profile = await db.RoomFeeProfiles.FirstOrDefaultAsync(x => x.RoomId == utility.RoomId);
@@ -266,13 +321,13 @@ public static class DormitoryWorkflowService
 
         if (utility is null)
         {
-            return (false, "KhÃ´ng tÃ¬m tháº¥y ká»³ Ä‘iá»‡n nÆ°á»›c.", null);
+            return (false, "Không tìm thấy kỳ điện nước.", null);
         }
 
         var profile = await db.RoomFeeProfiles.FirstOrDefaultAsync(x => x.RoomId == utility.RoomId);
         if (profile is null)
         {
-            return (false, "PhÃ²ng chÆ°a cÃ³ cáº¥u hÃ¬nh phÃ­ táº¡i chÃ­nh.", null);
+            return (false, "Phòng chưa có cấu hình phí tài chính.", null);
         }
 
         var billingMonth = new DateTime(utility.BillingMonth.Year, utility.BillingMonth.Month, 1);
@@ -302,7 +357,7 @@ public static class DormitoryWorkflowService
                 Status = "Unpaid",
                 DueDate = billingMonth.AddDays(profile.BillingCycleDay),
                 PaymentMethod = string.Empty,
-                PaymentNote = "Táº¡o tá»± Ä‘á»™ng tá»« ká»³ Ä‘iá»‡n nÆ°á»›c",
+                PaymentNote = "Tạo tự động từ kỳ điện nước",
                 RecordedBy = "system"
             };
 
@@ -339,12 +394,12 @@ public static class DormitoryWorkflowService
         var record = await db.RoomFinanceRecords.FirstOrDefaultAsync(x => x.Id == financeRecordId);
         if (record is null)
         {
-            return (false, "KhÃ´ng tÃ¬m tháº¥y cÃ´ng ná»£ phÃ²ng.", null);
+            return (false, "Không tìm thấy công nợ phòng.", null);
         }
 
         if (paidAmount <= 0)
         {
-            return (false, "Sá»‘ tiá»n thu pháº£i lá»›n hÆ¡n 0.", null);
+            return (false, "Số tiền thu phải lớn hơn 0.", null);
         }
 
         record.PaidAmount = Math.Min(record.Total, record.PaidAmount + paidAmount);
@@ -374,11 +429,58 @@ public static class DormitoryWorkflowService
         return dueDate.Date < comparisonDate ? "Late" : "Unpaid";
     }
 
+    public static async Task UpdateRoomFinanceFromSharesAsync(AppDbContext db, int roomFinanceRecordId, DateTime? paidDate = null)
+    {
+        var record = await db.RoomFinanceRecords.FirstOrDefaultAsync(x => x.Id == roomFinanceRecordId);
+        if (record is null)
+        {
+            return;
+        }
+
+        var shares = await db.RoomFinanceStudentShares
+            .Where(x => x.RoomFinanceRecordId == roomFinanceRecordId)
+            .ToListAsync();
+
+        if (shares.Count == 0)
+        {
+            return;
+        }
+
+        var totalPaid = shares.Sum(x => x.PaidAmount);
+        record.PaidAmount = Math.Min(record.Total, totalPaid);
+        var lastSharePaidDate = shares
+            .Where(x => x.PaidDate.HasValue)
+            .Select(x => x.PaidDate)
+            .DefaultIfEmpty(null)
+            .Max();
+        record.PaidDate = record.PaidAmount >= record.Total && record.Total > 0
+            ? paidDate ?? lastSharePaidDate ?? DateTime.Today
+            : null;
+        record.Status = ResolveFinanceStatus(record.PaidAmount, record.Total, record.DueDate, record.PaidDate ?? paidDate);
+        record.UpdatedAt = DateTime.UtcNow;
+    }
+
     private static async Task<(bool Success, string? Message)> ValidateRoomAssignmentAsync(AppDbContext db, Students student, Rooms room)
     {
         if (student.RoomId == room.Id)
         {
             return (true, null);
+        }
+
+        // Kiểm tra sinh viên có hợp đồng hợp lệ
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
+        var hasValidContract = await db.Contracts.AnyAsync(x =>
+            x.StudentId == student.Id &&
+            x.RoomId == room.Id &&
+            x.Status == "Active" &&
+            x.StartDate < tomorrow &&
+            x.EndDate >= today);
+
+        if (!hasValidContract)
+        {
+            return (false, "Sinh viên cần có hợp đồng lưu trú hiệu lực cho đúng phòng trước khi xếp phòng.");
         }
 
         var currentOccupancy = await db.Students.CountAsync(x => x.RoomId == room.Id && x.Id != student.Id);
@@ -404,3 +506,4 @@ public static class DormitoryWorkflowService
         return (true, null);
     }
 }
+

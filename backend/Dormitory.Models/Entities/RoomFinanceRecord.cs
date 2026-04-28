@@ -23,5 +23,6 @@ namespace Dormitory.Models.Entities
 
         public Rooms? Room { get; set; }
         public Utilities? Utility { get; set; }
+        public ICollection<RoomFinanceStudentShare> StudentShares { get; set; } = new List<RoomFinanceStudentShare>();
     }
 }

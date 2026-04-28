@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Component, lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
 import { MetricCard, ModalCard, SectionBanner, SummaryBlock } from './components'
@@ -13,13 +13,61 @@ import { useAuth } from './hooks/useAuth'
 import { LoginSection } from './features/auth/LoginSection'
 import { currencyFormat, numberFormat } from './helpers'
 
-const AdminSection = lazy(() => import('./features/admin/AdminSection').then((module) => ({ default: module.AdminSection })))
-const CatalogSection = lazy(() => import('./features/catalog/CatalogSection').then((module) => ({ default: module.CatalogSection })))
-const FacilitiesSection = lazy(() => import('./features/facilities/FacilitiesSection').then((module) => ({ default: module.FacilitiesSection })))
-const FinanceSection = lazy(() => import('./features/finance/FinanceSection').then((module) => ({ default: module.FinanceSection })))
-const OperationsSection = lazy(() => import('./features/operations/OperationsSection').then((module) => ({ default: module.OperationsSection })))
-const OverviewSection = lazy(() => import('./features/overview/OverviewSection').then((module) => ({ default: module.OverviewSection })))
-const StudentsSection = lazy(() => import('./features/students/StudentsSection').then((module) => ({ default: module.StudentsSection })))
+function lazyWithRetry(importer) {
+  return lazy(async () => {
+    try {
+      return await importer()
+    } catch (error) {
+      const alreadyRetried = sessionStorage.getItem('dormitory_lazy_retry') === '1'
+      const isChunkError = /Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(String(error?.message ?? error))
+      if (isChunkError && !alreadyRetried) {
+        sessionStorage.setItem('dormitory_lazy_retry', '1')
+        window.location.reload()
+      }
+      throw error
+    }
+  })
+}
+
+class RouteErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false })
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="route-error-card">
+          <strong>Không thể mở phân hệ.</strong>
+          <p>Trình duyệt có thể đang giữ phiên bản tệp giao diện cũ. Hãy tải lại trang để đồng bộ lại.</p>
+          <button className="primary-button" onClick={() => window.location.reload()}>Tải lại trang</button>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+const AdminSection = lazyWithRetry(() => import('./features/admin/AdminSection').then((module) => ({ default: module.AdminSection })))
+const CatalogSection = lazyWithRetry(() => import('./features/catalog/CatalogSection').then((module) => ({ default: module.CatalogSection })))
+const FacilitiesSection = lazyWithRetry(() => import('./features/facilities/FacilitiesSection').then((module) => ({ default: module.FacilitiesSection })))
+const FinanceSection = lazyWithRetry(() => import('./features/finance/FinanceSection').then((module) => ({ default: module.FinanceSection })))
+const OperationsSection = lazyWithRetry(() => import('./features/operations/OperationsSection').then((module) => ({ default: module.OperationsSection })))
+const OverviewSection = lazyWithRetry(() => import('./features/overview/OverviewSection').then((module) => ({ default: module.OverviewSection })))
+const StudentsSection = lazyWithRetry(() => import('./features/students/StudentsSection').then((module) => ({ default: module.StudentsSection })))
+const StudentPortalSection = lazyWithRetry(() => import('./features/student-portal/StudentPortalSection').then((module) => ({ default: module.StudentPortalSection })))
 
 function App() {
   const { user, loading: authLoading, logout, hasPermission, hasAnyPermission } = useAuth()
@@ -33,6 +81,10 @@ function App() {
   } = useSidebarLayout()
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    sessionStorage.removeItem('dormitory_lazy_retry')
+  }, [])
 
   const allowedNavs = NAVIGATION.filter((item) => {
     switch (item.key) {
@@ -52,6 +104,8 @@ function App() {
   const { getPanelProps, expandPanel } = usePanelLayouts()
   const {
     activeRoomId,
+    confirmDelete,
+    confirmDeleteAction,
     dashboard,
     data,
     deleteEntity,
@@ -70,6 +124,7 @@ function App() {
     roomOverview,
     saveEntity,
     saving,
+    setConfirmDelete,
     setModal,
     setRoomActions,
     setSelectedRoomId,
@@ -108,6 +163,17 @@ function App() {
         <Route path="/login" element={<LoginSection />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+    )
+  }
+
+  // Student portal route
+  if (user.studentId) {
+    return (
+      <RouteErrorBoundary resetKey="student-portal">
+        <Suspense fallback={<div className="loading-screen"><div className="loading-card"><h1>Đang tải cổng sinh viên...</h1></div></div>}>
+          <StudentPortalSection />
+        </Suspense>
+      </RouteErrorBoundary>
     )
   }
 
@@ -241,53 +307,55 @@ function App() {
           ) : null}
         />
 
-        <Suspense fallback={<div className="page-loading">Đang mở phân hệ...</div>}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/overview" replace />} />
-            <Route path="/overview" element={<OverviewSection dashboard={dashboard} getPanelProps={getPanelProps} />} />
-            <Route
-              path="/catalog"
-              element={<CatalogSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
-            />
-            <Route
-              path="/operations"
-              element={(
-                <OperationsSection
-                  data={data}
-                  roomOverview={roomOverview}
-                  selectedRoomId={activeRoomId}
-                  setSelectedRoomId={setSelectedRoomId}
-                  roomActions={roomActions}
-                  setRoomActions={setRoomActions}
-                  waitingStudents={waitingStudents}
-                  executeAction={executeAction}
-                  openCreate={openCreate}
-                  openEdit={openEdit}
-                  deleteEntity={deleteEntity}
-                  saving={saving}
-                  getPanelProps={getPanelProps}
-                />
-              )}
-            />
-            <Route
-              path="/facilities"
-              element={<FacilitiesSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
-            />
-            <Route
-              path="/students"
-              element={<StudentsSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
-            />
-            <Route
-              path="/finance"
-              element={<FinanceSection data={data} financeSummary={financeSummary} executeAction={executeAction} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
-            />
-            <Route
-              path="/admin"
-              element={<AdminSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
-            />
-            <Route path="*" element={<Navigate to="/overview" replace />} />
-          </Routes>
-        </Suspense>
+        <RouteErrorBoundary resetKey={location.pathname}>
+          <Suspense fallback={<div className="page-loading">Đang mở phân hệ...</div>}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/overview" replace />} />
+              <Route path="/overview" element={<OverviewSection dashboard={dashboard} getPanelProps={getPanelProps} />} />
+              <Route
+                path="/catalog"
+                element={<CatalogSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+              />
+              <Route
+                path="/operations"
+                element={(
+                  <OperationsSection
+                    data={data}
+                    roomOverview={roomOverview}
+                    selectedRoomId={activeRoomId}
+                    setSelectedRoomId={setSelectedRoomId}
+                    roomActions={roomActions}
+                    setRoomActions={setRoomActions}
+                    waitingStudents={waitingStudents}
+                    executeAction={executeAction}
+                    openCreate={openCreate}
+                    openEdit={openEdit}
+                    deleteEntity={deleteEntity}
+                    saving={saving}
+                    getPanelProps={getPanelProps}
+                  />
+                )}
+              />
+              <Route
+                path="/facilities"
+                element={<FacilitiesSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+              />
+              <Route
+                path="/students"
+                element={<StudentsSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} refreshData={refreshData} />}
+              />
+              <Route
+                path="/finance"
+                element={<FinanceSection data={data} financeSummary={financeSummary} executeAction={executeAction} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} refreshData={refreshData} />}
+              />
+              <Route
+                path="/admin"
+                element={<AdminSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+              />
+              <Route path="*" element={<Navigate to="/overview" replace />} />
+            </Routes>
+          </Suspense>
+        </RouteErrorBoundary>
 
         {modal ? (
           <ModalCard
@@ -304,6 +372,26 @@ function App() {
             }
           >
             <EntityForm modal={modal} lookups={{ ...lookups, users: data.users || [] }} updateModalField={updateModalField} errors={formErrors} />
+          </ModalCard>
+        ) : null}
+
+        {confirmDelete ? (
+          <ModalCard
+            title="Xác nhận xóa"
+            subtitle={`Bạn có chắc chắn muốn xóa "${confirmDelete.label}"? Thao tác này không thể hoàn tác.`}
+            onClose={() => setConfirmDelete(null)}
+            footer={
+              <>
+                <button className="secondary-button" onClick={() => setConfirmDelete(null)}>Hủy</button>
+                <button className="primary-button danger" onClick={confirmDeleteAction} disabled={saving}>
+                  {saving ? 'Đang xóa...' : 'Xóa'}
+                </button>
+              </>
+            }
+          >
+            <p style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--text-secondary, #666)' }}>
+              Dữ liệu liên quan sẽ bị ảnh hưởng. Vui lòng kiểm tra kỹ trước khi xác nhận.
+            </p>
           </ModalCard>
         ) : null}
       </main>

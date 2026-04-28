@@ -4,7 +4,10 @@ import { currencyFormat, numberFormat, repairText } from '../helpers'
 
 export function useDashboardViewModel({ dashboard, data, financeSummary, section }) {
   const waitingStudents = useMemo(
-    () => data.students.filter((student) => !student.roomId || ['Waiting', 'PendingMoveIn', 'Pending'].includes(student.status)),
+    () => data.students.filter((student) =>
+      student.canAssignRoom &&
+      (!student.roomId || ['Waiting', 'PendingMoveIn', 'Pending'].includes(student.status)),
+    ),
     [data.students],
   )
 

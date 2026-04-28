@@ -41,6 +41,7 @@ export function useDormitoryData() {
   const [selectedRoomId, setSelectedRoomId] = useState('')
   const [roomOverview, setRoomOverview] = useState(null)
   const [roomActions, setRoomActions] = useState(INITIAL_ROOM_ACTIONS)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const activeRoomId = selectedRoomId || (data.rooms[0] ? String(data.rooms[0].id) : '')
 
@@ -156,6 +157,12 @@ export function useDormitoryData() {
       defaults.paymentMethod = ''
     }
 
+    if (entityKey === 'students') {
+      defaults.status = 'Waiting'
+      defaults.accountUsername = ''
+      defaults.accountPassword = ''
+    }
+
     setFormErrors({})
     setModal({ entityKey, mode: 'create', id: null, values: defaults })
   }
@@ -181,6 +188,10 @@ export function useDormitoryData() {
           nextValues.capacity = category.defaultCapacity
           nextValues.pricePerMonth = category.baseMonthlyFee
         }
+      }
+
+      if (current.entityKey === 'students' && name === 'studentCode' && !nextValues.accountUsername) {
+        nextValues.accountUsername = String(value || '').trim().toLowerCase()
       }
 
       if (current.entityKey === 'rooms' && name === 'roomZoneId') {
@@ -216,15 +227,15 @@ export function useDormitoryData() {
           nextValues.waterFee = utility.waterFee ?? 0
           nextValues.billingMonth = utility.billingMonth ?? nextValues.billingMonth
           if (utility.roomId && !nextValues.roomId) {
-             nextValues.roomId = String(utility.roomId)
-             const profile = data.roomFeeProfiles.find((item) => String(item.roomId) === String(utility.roomId))
-             if (profile) {
-               nextValues.monthlyRoomFee = profile.monthlyRoomFee ?? 0
-               nextValues.hygieneFee = profile.hygieneFee ?? 0
-               nextValues.serviceFee = profile.serviceFee ?? 0
-               nextValues.internetFee = profile.internetFee ?? 0
-               nextValues.otherFee = profile.otherFee ?? 0
-             }
+            nextValues.roomId = String(utility.roomId)
+            const profile = data.roomFeeProfiles.find((item) => String(item.roomId) === String(utility.roomId))
+            if (profile) {
+              nextValues.monthlyRoomFee = profile.monthlyRoomFee ?? 0
+              nextValues.hygieneFee = profile.hygieneFee ?? 0
+              nextValues.serviceFee = profile.serviceFee ?? 0
+              nextValues.internetFee = profile.internetFee ?? 0
+              nextValues.otherFee = profile.otherFee ?? 0
+            }
           }
         }
       }
@@ -278,9 +289,15 @@ export function useDormitoryData() {
     }
   }
 
-  async function deleteEntity(entityKey, item) {
+  function deleteEntity(entityKey, item) {
     const label = item.name ?? item.roomNumber ?? item.studentCode ?? item.invoiceCode ?? item.username ?? 'bản ghi'
-    if (!window.confirm(`Xóa ${label}?`)) return
+    setConfirmDelete({ entityKey, item, label })
+  }
+
+  async function confirmDeleteAction() {
+    if (!confirmDelete) return
+    const { entityKey, item } = confirmDelete
+    setConfirmDelete(null)
 
     try {
       setSaving(true)
@@ -321,6 +338,8 @@ export function useDormitoryData() {
 
   return {
     activeRoomId,
+    confirmDelete,
+    confirmDeleteAction,
     dashboard,
     notifications,
     data,
@@ -341,6 +360,7 @@ export function useDormitoryData() {
     saveEntity,
     saving,
     selectedRoomId,
+    setConfirmDelete,
     setModal,
     setRoomActions,
     setSelectedRoomId,

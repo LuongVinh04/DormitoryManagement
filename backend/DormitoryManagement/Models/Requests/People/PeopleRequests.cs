@@ -14,6 +14,8 @@ public class StudentRequest
     public string EmergencyContact { get; set; } = string.Empty;
     public string Status { get; set; } = "Active";
     public int? RoomId { get; set; }
+    public string AccountUsername { get; set; } = string.Empty;
+    public string AccountPassword { get; set; } = string.Empty;
 }
 
 public class UserRequest

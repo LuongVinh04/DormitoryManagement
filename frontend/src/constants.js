@@ -1,5 +1,11 @@
 import { buildEnumOptions, buildValueLabels } from './enums'
 
+const currency = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0,
+})
+
 export const API_ENDPOINTS = {
   roomCategories: '/api/catalog/room-categories',
   roomZones: '/api/catalog/room-zones',
@@ -28,23 +34,14 @@ export const NAVIGATION = [
 ]
 
 export const VALUE_LABELS = buildValueLabels()
-
 export const GENDER_POLICY_OPTIONS = buildEnumOptions('genderPolicy')
-
 export const ROOM_TYPE_OPTIONS = buildEnumOptions('roomType')
-
 export const ROOM_STATUS_OPTIONS = buildEnumOptions('roomStatus')
-
 export const GENDER_OPTIONS = buildEnumOptions('gender')
-
 export const STUDENT_STATUS_OPTIONS = buildEnumOptions('studentStatus')
-
 export const REGISTRATION_STATUS_OPTIONS = buildEnumOptions('registrationStatus')
-
 export const CONTRACT_STATUS_OPTIONS = buildEnumOptions('contractStatus')
-
 export const INVOICE_STATUS_OPTIONS = buildEnumOptions('invoiceStatus')
-
 export const PAYMENT_METHOD_OPTIONS = buildEnumOptions('paymentMethod')
 
 export const ENTITY_CONFIGS = {
@@ -145,7 +142,7 @@ export const ENTITY_CONFIGS = {
       { name: 'genderPolicy', label: 'Loại khu', type: 'select', options: GENDER_POLICY_OPTIONS },
       { name: 'numberOfFloors', label: 'Số tầng', type: 'number' },
       { name: 'managerName', label: 'Người quản lý', type: 'lookup', lookup: 'users', allowEmpty: true, optionValue: (item) => item.fullName || item.username, optionLabel: (item) => `${item.fullName || item.username} (${item.roleName || 'User'})` },
-      { name: 'description', label: 'Mô tả', type: 'textarea' },
+      { name: 'description', label: 'Mô tả', type: 'textarea', allowEmpty: true },
     ],
   },
   rooms: {
@@ -165,7 +162,7 @@ export const ENTITY_CONFIGS = {
     fields: [
       { name: 'roomNumber', label: 'Số phòng', type: 'text' },
       { name: 'buildingId', label: 'Tòa nhà', type: 'lookup', lookup: 'buildings', optionLabel: (item) => `${item.code} - ${item.name}` },
-      { name: 'roomCategoryId', label: 'Loại phòng', type: 'lookup', lookup: 'roomCategories', optionLabel: (item) => `${item.name} - ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.baseMonthlyFee)}` },
+      { name: 'roomCategoryId', label: 'Loại phòng', type: 'lookup', lookup: 'roomCategories', optionLabel: (item) => `${item.name} - ${currency.format(item.baseMonthlyFee)}` },
       { name: 'roomZoneId', label: 'Phân khu', type: 'lookup', lookup: 'roomZones', allowEmpty: true, optionLabel: (item) => `${item.code} - ${item.name}` },
       { name: 'floorNumber', label: 'Tầng', type: 'number' },
       { name: 'capacity', label: 'Sức chứa', type: 'number' },
@@ -182,7 +179,8 @@ export const ENTITY_CONFIGS = {
       ['gender', 'Giới tính'],
       ['faculty', 'Khoa'],
       ['className', 'Lớp'],
-      ['roomNumber', 'Phòng'],
+      ['accountUsername', 'Tài khoản'],
+      ['contractWarning', 'Hợp đồng'],
       ['status', 'Trạng thái'],
     ],
     fields: [
@@ -197,7 +195,8 @@ export const ENTITY_CONFIGS = {
       { name: 'address', label: 'Địa chỉ', type: 'text' },
       { name: 'emergencyContact', label: 'Liên hệ khẩn cấp', type: 'text' },
       { name: 'status', label: 'Trạng thái', type: 'select', options: STUDENT_STATUS_OPTIONS },
-      { name: 'roomId', label: 'Phòng', type: 'lookup', lookup: 'rooms', allowEmpty: true, optionLabel: (item) => `${item.roomNumber} (${item.buildingName})` },
+      { name: 'accountUsername', label: 'Tài khoản sinh viên', type: 'text', allowEmpty: true, createOnly: true },
+      { name: 'accountPassword', label: 'Mật khẩu ban đầu', type: 'password', allowEmpty: true, createOnly: true },
     ],
   },
   registrations: {
@@ -215,8 +214,7 @@ export const ENTITY_CONFIGS = {
       { name: 'studentId', label: 'Sinh viên', type: 'lookup', lookup: 'students', optionLabel: (item) => `${item.studentCode} - ${item.name}` },
       { name: 'roomId', label: 'Phòng', type: 'lookup', lookup: 'rooms', optionLabel: (item) => `${item.roomNumber} (${item.buildingName})` },
       { name: 'registrationDate', label: 'Ngày đăng ký', type: 'date' },
-      { name: 'approvedDate', label: 'Ngày xử lý', type: 'date', allowEmpty: true },
-      { name: 'note', label: 'Ghi chú', type: 'textarea' },
+      { name: 'note', label: 'Ghi chú', type: 'textarea', allowEmpty: true },
       { name: 'status', label: 'Trạng thái', type: 'select', options: REGISTRATION_STATUS_OPTIONS },
     ],
   },
@@ -291,9 +289,9 @@ export const ENTITY_CONFIGS = {
       { name: 'serviceFee', label: 'Phí dịch vụ', type: 'number' },
       { name: 'internetFee', label: 'Phí internet', type: 'number' },
       { name: 'otherFee', label: 'Khoản phí khác', type: 'number' },
-      { name: 'otherFeeName', label: 'Tên khoản phí khác', type: 'text' },
+      { name: 'otherFeeName', label: 'Tên khoản phí khác', type: 'text', allowEmpty: true },
       { name: 'billingCycleDay', label: 'Ngày chốt thu', type: 'number' },
-      { name: 'notes', label: 'Ghi chú', type: 'textarea' },
+      { name: 'notes', label: 'Ghi chú', type: 'textarea', allowEmpty: true },
     ],
   },
   roomFinances: {
@@ -308,6 +306,8 @@ export const ENTITY_CONFIGS = {
       ['remainingAmount', 'Còn lại'],
       ['status', 'Trạng thái'],
       ['dueDate', 'Hạn thu'],
+      ['shareCount', 'SV chia'],
+      ['paidShareCount', 'SV nộp'],
     ],
     fields: [
       { name: 'roomId', label: 'Phòng', type: 'lookup', lookup: 'rooms', optionLabel: (item) => `${item.roomNumber} (${item.buildingName})` },
@@ -324,9 +324,9 @@ export const ENTITY_CONFIGS = {
       { name: 'dueDate', label: 'Hạn thu', type: 'date' },
       { name: 'paidDate', label: 'Ngày thanh toán', type: 'date', allowEmpty: true },
       { name: 'status', label: 'Trạng thái', type: 'select', options: INVOICE_STATUS_OPTIONS },
-      { name: 'paymentMethod', label: 'Hình thức thu', type: 'lookupCode', lookup: 'paymentMethods', allowEmpty: true, optionLabel: (item) => `${item.name}${item.processingFee ? ` - phí ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(item.processingFee)}` : ''}` },
-      { name: 'recordedBy', label: 'Người thu', type: 'text' },
-      { name: 'paymentNote', label: 'Ghi chú thu tiền', type: 'textarea' },
+      { name: 'paymentMethod', label: 'Hình thức thu', type: 'lookupCode', lookup: 'paymentMethods', allowEmpty: true, optionLabel: (item) => `${item.name}${item.processingFee ? ` - phí ${currency.format(item.processingFee)}` : ''}` },
+      { name: 'recordedBy', label: 'Người thu', type: 'lookup', lookup: 'users', allowEmpty: true, optionValue: (item) => item.fullName || item.username, optionLabel: (item) => `${item.fullName || item.username} (${item.roleName || 'User'})` },
+      { name: 'paymentNote', label: 'Ghi chú thu tiền', type: 'textarea', allowEmpty: true },
     ],
   },
   invoices: {
@@ -365,7 +365,7 @@ export const ENTITY_CONFIGS = {
     ],
     fields: [
       { name: 'name', label: 'Tên vai trò', type: 'text' },
-      { name: 'description', label: 'Mô tả', type: 'textarea' },
+      { name: 'description', label: 'Mô tả', type: 'textarea', allowEmpty: true },
     ],
   },
   users: {

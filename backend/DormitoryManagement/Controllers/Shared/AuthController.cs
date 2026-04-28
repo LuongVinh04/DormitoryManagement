@@ -78,7 +78,8 @@ namespace DormitoryManagement.Controllers.Shared
                     Username = user.Username,
                     FullName = user.FullName,
                     Email = user.Email,
-                    RoleName = user.Role?.Name ?? ""
+                    RoleName = user.Role?.Name ?? "",
+                    StudentId = user.StudentId
                 },
                 Permissions = finalPermissions
             });
@@ -115,7 +116,8 @@ namespace DormitoryManagement.Controllers.Shared
                     Username = user.Username,
                     FullName = user.FullName,
                     Email = user.Email,
-                    RoleName = user.Role?.Name ?? ""
+                    RoleName = user.Role?.Name ?? "",
+                    StudentId = user.StudentId
                 },
                 Permissions = finalPermissions
             });

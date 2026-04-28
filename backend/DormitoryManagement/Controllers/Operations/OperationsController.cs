@@ -45,7 +45,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
             StudentId = request.StudentId,
             RoomId = request.RoomId,
             RegistrationDate = request.RegistrationDate,
-            ApprovedDate = request.ApprovedDate,
+            ApprovedDate = null, // Chỉ set khi duyệt/từ chối
             Note = request.Note.Trim(),
             Status = request.Status.Trim()
         };
@@ -72,7 +72,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
         entity.StudentId = request.StudentId;
         entity.RoomId = request.RoomId;
         entity.RegistrationDate = request.RegistrationDate;
-        entity.ApprovedDate = request.ApprovedDate;
+        // Không cho client set ApprovedDate trực tiếp
         entity.Note = request.Note.Trim();
         entity.Status = request.Status.Trim();
         entity.UpdatedAt = DateTime.UtcNow;
@@ -179,6 +179,16 @@ public class OperationsController(AppDbContext db) : ControllerBase
     {
         var entity = await db.Contracts.FindAsync(id);
         if (entity is null) return NotFound();
+
+        // Chặn hủy hợp đồng nếu sinh viên còn ở phòng
+        if (request.Status.Trim() == "Cancelled" && entity.Status != "Cancelled")
+        {
+            var student = await db.Students.FindAsync(entity.StudentId);
+            if (student is not null && student.RoomId != null)
+            {
+                return BadRequest(new { message = "Cần trả phòng cho sinh viên trước khi hủy hợp đồng." });
+            }
+        }
 
         entity.ContractCode = request.ContractCode.Trim();
         entity.StudentId = request.StudentId;
@@ -413,6 +423,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
             .Include(x => x.Room)
             .ThenInclude(x => x!.Building)
             .Include(x => x.Utility)
+            .Include(x => x.StudentShares)
             .OrderByDescending(x => x.BillingMonth)
             .ThenBy(x => x.Room!.RoomNumber)
             .Select(x => new
@@ -443,6 +454,8 @@ public class OperationsController(AppDbContext db) : ControllerBase
                 x.RecordedBy,
                 electricityEvidenceUrl = x.Utility != null ? x.Utility.ElectricityEvidenceUrl : null,
                 waterEvidenceUrl = x.Utility != null ? x.Utility.WaterEvidenceUrl : null,
+                shareCount = x.StudentShares.Count,
+                paidShareCount = x.StudentShares.Count(s => s.Status == "Paid"),
                 x.CreatedAt
             })
             .ToListAsync();
@@ -586,7 +599,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return Ok(new
         {
-            message = "ÄÃ£ táº¡o cÃ´ng ná»£ táº¡i chÃ­nh cho phÃ²ng tá»« ká»³ Ä‘iá»‡n nÆ°á»›c.",
+            message = "Đã tạo công nợ tài chính cho phòng từ kỳ điện nước.",
             recordId = result.Record!.Id
         });
     }
@@ -609,7 +622,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
-        return Ok(new { message = "ÄÃ£ ghi nháº­n thanh toÃ¡n cho phÃ²ng." });
+        return Ok(new { message = "Đã ghi nhận thanh toán cho phòng." });
     }
 
     [HttpDelete("room-finances/{id:int}")]
@@ -714,6 +727,19 @@ public class OperationsController(AppDbContext db) : ControllerBase
         entity.Status = "Paid";
         entity.PaidDate = request.PaidDate ?? DateTime.Today;
         entity.UpdatedAt = DateTime.UtcNow;
+
+        var share = await db.RoomFinanceStudentShares
+            .FirstOrDefaultAsync(x => x.InvoiceId == entity.Id);
+        if (share is not null)
+        {
+            share.PaidAmount = share.ExpectedAmount;
+            share.PaidDate = entity.PaidDate;
+            share.PaymentMethod = string.IsNullOrWhiteSpace(share.PaymentMethod) ? "Manual" : share.PaymentMethod;
+            share.Status = "Paid";
+            share.UpdatedAt = DateTime.UtcNow;
+            await DormitoryWorkflowService.UpdateRoomFinanceFromSharesAsync(db, share.RoomFinanceRecordId, share.PaidDate);
+        }
+
         await db.SaveChangesAsync();
 
         return Ok(new { message = "Đã ghi nhận thanh toán hóa đơn." });
@@ -728,5 +754,257 @@ public class OperationsController(AppDbContext db) : ControllerBase
         db.Invoices.Remove(entity);
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    // ── Student Shares ──────────────────────────────────────────────
+
+    [HttpGet("room-finances/{id:int}/shares")]
+    public async Task<IActionResult> GetStudentShares(int id)
+    {
+        var shares = await db.RoomFinanceStudentShares
+            .Include(x => x.Student)
+            .Include(x => x.Invoice)
+            .Where(x => x.RoomFinanceRecordId == id)
+            .OrderBy(x => x.Student!.StudentCode)
+            .Select(x => new
+            {
+                x.Id,
+                x.RoomFinanceRecordId,
+                x.StudentId,
+                x.InvoiceId,
+                invoiceCode = x.Invoice != null ? x.Invoice.InvoiceCode : string.Empty,
+                invoiceStatus = x.Invoice != null ? x.Invoice.Status : string.Empty,
+                studentCode = x.Student!.StudentCode,
+                studentName = x.Student.Name,
+                x.ExpectedAmount,
+                x.PaidAmount,
+                remainingAmount = x.ExpectedAmount - x.PaidAmount,
+                x.Status,
+                x.PaidDate,
+                x.PaymentMethod,
+                x.Note,
+                x.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(shares);
+    }
+
+    [HttpPost("room-finances/{id:int}/generate-shares")]
+    public async Task<IActionResult> GenerateStudentShares(int id)
+    {
+        var record = await db.RoomFinanceRecords.FindAsync(id);
+        if (record is null) return NotFound();
+
+        var existingShares = await db.RoomFinanceStudentShares
+            .Where(x => x.RoomFinanceRecordId == id)
+            .ToListAsync();
+
+        if (existingShares.Count > 0)
+        {
+            return BadRequest(new { message = "Công nợ phòng này đã được chia cho sinh viên. Hãy xóa trước nếu muốn chia lại." });
+        }
+
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
+        var students = await db.Students
+            .Where(x =>
+                x.RoomId == record.RoomId &&
+                x.Status != "Inactive" &&
+                x.Contracts.Any(c =>
+                    c.Status == "Active" &&
+                    c.StartDate < tomorrow &&
+                    c.EndDate >= today))
+            .OrderBy(x => x.StudentCode)
+            .ToListAsync();
+
+        if (students.Count == 0)
+        {
+            return BadRequest(new { message = "Phòng chưa có sinh viên để chia tiền." });
+        }
+
+        var roomFees = SplitAmount(record.MonthlyRoomFee, students.Count);
+        var electricityFees = SplitAmount(record.ElectricityFee, students.Count);
+        var waterFees = SplitAmount(record.WaterFee, students.Count);
+        var serviceFees = SplitAmount(record.HygieneFee + record.ServiceFee + record.InternetFee + record.OtherFee, students.Count);
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
+        var invoices = students.Select((student, index) =>
+        {
+            var total = roomFees[index] + electricityFees[index] + waterFees[index] + serviceFees[index];
+            return new Invoices
+            {
+                InvoiceCode = BuildRoomFinanceInvoiceCode(record.Id, student.StudentCode),
+                StudentId = student.Id,
+                RoomId = record.RoomId,
+                UtilityId = record.UtilityId,
+                RoomFee = roomFees[index],
+                ElectricityFee = electricityFees[index],
+                WaterFee = waterFees[index],
+                ServiceFee = serviceFees[index],
+                Total = total,
+                Status = "Unpaid",
+                BillingMonth = record.BillingMonth,
+                DueDate = record.DueDate
+            };
+        }).ToList();
+
+        db.Invoices.AddRange(invoices);
+        await db.SaveChangesAsync();
+
+        var shares = students.Select((s, index) => new RoomFinanceStudentShare
+        {
+            RoomFinanceRecordId = id,
+            StudentId = s.Id,
+            InvoiceId = invoices[index].Id,
+            ExpectedAmount = invoices[index].Total,
+            PaidAmount = 0,
+            Status = "Unpaid"
+        }).ToList();
+
+        db.RoomFinanceStudentShares.AddRange(shares);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new
+        {
+            message = $"Đã chia tiền và tạo {shares.Count} hóa đơn cho sinh viên.",
+            count = shares.Count
+        });
+    }
+
+    [HttpPut("room-finance-shares/{shareId:int}")]
+    public async Task<IActionResult> AdjustStudentShare(int shareId, [FromBody] StudentShareAdjustRequest request)
+    {
+        var share = await db.RoomFinanceStudentShares
+            .Include(x => x.Invoice)
+            .FirstOrDefaultAsync(x => x.Id == shareId);
+        if (share is null) return NotFound();
+
+        var oldExpectedAmount = share.ExpectedAmount;
+        share.ExpectedAmount = request.ExpectedAmount;
+        share.Note = request.Note.Trim();
+        share.Status = share.PaidAmount >= request.ExpectedAmount && request.ExpectedAmount > 0
+            ? "Paid"
+            : share.PaidAmount > 0 ? "PartiallyPaid" : "Unpaid";
+        share.UpdatedAt = DateTime.UtcNow;
+
+        if (share.Invoice is not null)
+        {
+            var difference = request.ExpectedAmount - oldExpectedAmount;
+            share.Invoice.ServiceFee = Math.Max(0, share.Invoice.ServiceFee + difference);
+            share.Invoice.Total = request.ExpectedAmount;
+            share.Invoice.Status = share.Status;
+            share.Invoice.PaidDate = share.Status == "Paid" ? share.PaidDate : null;
+            share.Invoice.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await DormitoryWorkflowService.UpdateRoomFinanceFromSharesAsync(db, share.RoomFinanceRecordId, share.PaidDate);
+
+        await db.SaveChangesAsync();
+        return Ok(share);
+    }
+
+    [HttpPost("room-finance-shares/{shareId:int}/mark-paid")]
+    public async Task<IActionResult> MarkStudentSharePaid(int shareId, [FromBody] StudentSharePaymentRequest request)
+    {
+        var share = await db.RoomFinanceStudentShares
+            .Include(x => x.RoomFinanceRecord)
+            .Include(x => x.Invoice)
+            .FirstOrDefaultAsync(x => x.Id == shareId);
+        if (share is null) return NotFound();
+
+        if (request.PaidAmount <= 0)
+        {
+            return BadRequest(new { message = "Số tiền thu phải lớn hơn 0." });
+        }
+
+        share.PaidAmount = Math.Min(share.ExpectedAmount, share.PaidAmount + request.PaidAmount);
+        share.PaidDate = request.PaidDate ?? DateTime.Today;
+        share.PaymentMethod = request.PaymentMethod.Trim();
+        share.Note = request.Note.Trim();
+        share.Status = share.PaidAmount >= share.ExpectedAmount ? "Paid" : "PartiallyPaid";
+        share.UpdatedAt = DateTime.UtcNow;
+
+        if (share.Invoice is not null)
+        {
+            share.Invoice.Status = share.Status;
+            share.Invoice.PaidDate = share.Status == "Paid" ? share.PaidDate : null;
+            share.Invoice.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await DormitoryWorkflowService.UpdateRoomFinanceFromSharesAsync(db, share.RoomFinanceRecordId, share.PaidDate);
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Đã ghi nhận thanh toán phần chia." });
+    }
+
+    [HttpDelete("room-finance-shares/{shareId:int}")]
+    public async Task<IActionResult> DeleteStudentShare(int shareId)
+    {
+        var share = await db.RoomFinanceStudentShares
+            .Include(x => x.Invoice)
+            .FirstOrDefaultAsync(x => x.Id == shareId);
+        if (share is null) return NotFound();
+        if (share.PaidAmount > 0 || share.Status == "Paid" || share.Status == "PartiallyPaid")
+        {
+            return BadRequest(new { message = "Không thể xóa phần chia đã phát sinh thanh toán." });
+        }
+
+        if (share.Invoice is not null && share.Invoice.Status != "Paid")
+        {
+            db.Invoices.Remove(share.Invoice);
+        }
+        db.RoomFinanceStudentShares.Remove(share);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("room-finances/{id:int}/shares")]
+    public async Task<IActionResult> DeleteAllStudentShares(int id)
+    {
+        var shares = await db.RoomFinanceStudentShares
+            .Include(x => x.Invoice)
+            .Where(x => x.RoomFinanceRecordId == id)
+            .ToListAsync();
+
+        if (shares.Any(x => x.PaidAmount > 0 || x.Status == "Paid" || x.Status == "PartiallyPaid"))
+        {
+            return BadRequest(new { message = "Không thể xóa toàn bộ phần chia vì đã có sinh viên thanh toán." });
+        }
+
+        var invoices = shares
+            .Where(x => x.Invoice is not null && x.Invoice.Status != "Paid")
+            .Select(x => x.Invoice!)
+            .ToList();
+        db.Invoices.RemoveRange(invoices);
+        db.RoomFinanceStudentShares.RemoveRange(shares);
+        await db.SaveChangesAsync();
+        return Ok(new { message = $"Đã xóa {shares.Count} phần chia." });
+    }
+
+    private static List<decimal> SplitAmount(decimal amount, int count)
+    {
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var perStudent = Math.Round(amount / count, 0);
+        var parts = Enumerable.Repeat(perStudent, count).ToList();
+        var totalParts = parts.Sum();
+        if (parts.Count > 0 && totalParts != amount)
+        {
+            parts[^1] += amount - totalParts;
+        }
+
+        return parts;
+    }
+
+    private static string BuildRoomFinanceInvoiceCode(int roomFinanceRecordId, string studentCode)
+    {
+        return $"RF-{roomFinanceRecordId:D5}-{studentCode}-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
     }
 }
