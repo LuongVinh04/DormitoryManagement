@@ -838,12 +838,18 @@ textarea {
 
 .field {
   display: grid;
-  gap: 7px;
+  gap: 9px;
   min-width: 0;
   position: relative;
 }
 
-.field label {
+label.field {
+  cursor: text;
+}
+
+.field label,
+.field > span,
+label.field > span {
   color: #334155;
   font-size: 0.88rem;
   font-weight: 650;
@@ -856,6 +862,7 @@ textarea {
   width: 100%;
   min-width: 0;
   cursor: text;
+  display: block;
 }
 
 .field-error {
@@ -882,6 +889,7 @@ textarea {
   z-index: 1;
   display: block;
   touch-action: manipulation;
+  pointer-events: auto;
 }
 
 textarea {
@@ -901,6 +909,10 @@ textarea {
 select {
   cursor: pointer;
   appearance: auto;
+}
+
+label.field:has(select) {
+  cursor: pointer;
 }
 
 input[type="date"],
@@ -1026,6 +1038,7 @@ thead th {
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  z-index: 100;
   background: rgba(15, 23, 42, 0.44);
   display: grid;
   place-items: center;
@@ -1040,12 +1053,35 @@ thead th {
   border-radius: 30px;
   background: #ffffff;
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24);
+  display: grid;
+  gap: 20px;
+}
+
+.modal-body {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px 16px;
+}
+
+.modal-card .form-grid {
+  margin-bottom: 0;
+}
+
+.modal-footer {
+  margin-top: 8px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  align-items: stretch;
+}
+
+.modal-footer > button {
+  min-height: 44px;
 }
 
 .field-wide {
@@ -1495,7 +1531,8 @@ thead th {
 
 .global-loading {
   position: fixed;
-  inset: 0;
+  right: 24px;
+  bottom: 24px;
   z-index: 120;
   pointer-events: none;
   opacity: 0;
@@ -1503,34 +1540,28 @@ thead th {
 }
 
 .global-loading.active {
-  pointer-events: auto;
+  pointer-events: none;
   opacity: 1;
 }
 
 .global-loading-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(248, 250, 252, 0.54);
-  backdrop-filter: blur(8px);
+  display: none;
 }
 
 .global-loading-card {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: min(420px, calc(100vw - 32px));
   padding: 24px;
   border-radius: 28px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.18);
-  transform: translate(-50%, -50%) scale(0.97);
+  transform: translateY(10px) scale(0.97);
   transition: transform 220ms ease;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .global-loading.active .global-loading-card {
-  transform: translate(-50%, -50%) scale(1);
+  transform: translateY(0) scale(1);
 }
 
 .global-loading-brand {
@@ -1606,9 +1637,7 @@ thead th {
 .hero-focus-item:hover,
 .summary-block:hover,
 .metric-tile:hover,
-.panel-card:hover,
-.snapshot-card:hover,
-.action-card:hover {
+.snapshot-card:hover {
   transform: translateY(-2px);
 }
 
@@ -1868,11 +1897,166 @@ thead th {
   gap: 8px;
 }
 
+.payment-method-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.payment-method-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.payment-method-option:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.1);
+}
+
+.payment-method-option.active {
+  border-color: rgba(15, 118, 110, 0.55);
+  background: linear-gradient(135deg, rgba(240, 253, 250, 0.95), rgba(239, 246, 255, 0.95));
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.13);
+}
+
+.payment-method-option img {
+  width: 34px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.cash-method-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.14);
+  font-weight: 900;
+}
+
+.vnpay-payment-modal {
+  max-width: 620px;
+}
+
+.vnpay-frame-modal {
+  width: min(1120px, 96vw);
+  max-width: 1120px;
+  max-height: 94vh;
+}
+
+.vnpay-payment-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.vnpay-payment-header img {
+  width: 132px;
+  max-width: 36%;
+  border-radius: 14px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
+}
+
+.vnpay-payment-header h2 {
+  margin: 0 0 6px;
+}
+
+.vnpay-payment-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.vnpay-payment-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.vnpay-payment-summary div {
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.vnpay-payment-summary span,
+.vnpay-payment-summary strong {
+  display: block;
+}
+
+.vnpay-payment-summary span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.vnpay-payment-summary strong {
+  margin-top: 4px;
+  color: #0f172a;
+}
+
+.vnpay-frame-shell {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.vnpay-frame {
+  display: block;
+  width: 100%;
+  height: min(68vh, 720px);
+  min-height: 520px;
+  border: 0;
+  background: #ffffff;
+}
+
 .message-console {
   display: grid;
   grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
   gap: 18px;
   align-items: start;
+}
+
+.message-composer {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 32%),
+    rgba(248, 250, 252, 0.92);
+}
+
+.message-send-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.message-send-row > button {
+  flex: 1 1 170px;
 }
 
 .message-list {
@@ -2009,6 +2193,100 @@ thead th {
   font-weight: 600;
 }
 
+.student-payment-method {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.8));
+}
+
+.student-payment-method img {
+  width: 96px;
+  max-width: 34%;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.student-payment-method strong,
+.student-payment-method span {
+  display: block;
+}
+
+.student-payment-method strong {
+  color: #0f172a;
+}
+
+.student-payment-method span {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.payment-inline-feedback {
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vnpay-pay-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 178px;
+  padding: 8px 12px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 18px;
+  color: #0f172a;
+  background: linear-gradient(135deg, #ffffff, #eff6ff);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.13);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.vnpay-pay-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.18);
+}
+
+.vnpay-pay-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.vnpay-pay-button img {
+  width: 62px;
+  height: auto;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.vnpay-pay-button span,
+.vnpay-pay-button strong,
+.vnpay-pay-button small {
+  display: block;
+  text-align: left;
+}
+
+.vnpay-pay-button strong {
+  font-size: 0.88rem;
+}
+
+.vnpay-pay-button small {
+  margin-top: 1px;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
 .student-portal-card-header {
   display: flex;
   justify-content: space-between;
@@ -2136,6 +2414,42 @@ thead th {
 
   .student-portal-info {
     grid-template-columns: 1fr;
+  }
+
+  .student-payment-method {
+    align-items: flex-start;
+  }
+
+  .student-payment-method img {
+    width: 78px;
+  }
+
+  .vnpay-pay-button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .payment-method-picker,
+  .vnpay-payment-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .vnpay-payment-header {
+    align-items: flex-start;
+  }
+
+  .vnpay-payment-header img {
+    width: 96px;
+  }
+
+  .vnpay-frame-modal {
+    width: 100%;
+    max-height: 96vh;
+  }
+
+  .vnpay-frame {
+    height: 64vh;
+    min-height: 420px;
   }
 }
 

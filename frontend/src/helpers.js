@@ -110,7 +110,7 @@ export function normalizePayload(fields, values) {
     }
 
     if (field.type === 'lookup') {
-      payload[field.name] = value === '' ? null : Number(value)
+      payload[field.name] = value === '' ? null : (field.optionValue ? value : Number(value))
       return
     }
 
@@ -145,15 +145,16 @@ export async function readError(response) {
 }
 
 export async function apiFetch(url, options = {}) {
-  const endLoading = beginLoading()
+  const { skipGlobalLoading = false, ...fetchOptions } = options
+  const endLoading = skipGlobalLoading ? async () => {} : beginLoading()
   const token = localStorage.getItem('dormitory_token')
-  const headers = { ...options.headers }
+  const headers = { ...fetchOptions.headers }
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
 
   try {
-    const response = await fetch(url, { ...options, headers })
+    const response = await fetch(url, { ...fetchOptions, headers })
     if (response.status === 401 || response.status === 403) {
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'

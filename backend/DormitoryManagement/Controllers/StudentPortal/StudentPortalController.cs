@@ -247,7 +247,7 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             .FirstOrDefaultAsync(x => x.Id == invoiceId && x.StudentId == student.Id);
         if (invoice is null)
         {
-            return NotFound(new { message = "Không tìm thấy hóa đơn của sinh viên." });
+            return NotFound(new { message = "Không tìm thấy hóa đơn của sinh viên đang đăng nhập." });
         }
 
         if (invoice.Status == "Paid")
@@ -260,7 +260,8 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             return BadRequest(new { message = "VNPay sandbox chưa được cấu hình. Cần nhập TmnCode và HashSecret trong appsettings.json." });
         }
 
-        var share = await db.RoomFinanceStudentShares.FirstOrDefaultAsync(x => x.InvoiceId == invoice.Id);
+        var share = await db.RoomFinanceStudentShares
+            .FirstOrDefaultAsync(x => x.InvoiceId == invoice.Id && x.StudentId == student.Id);
         var amount = share is not null
             ? Math.Max(0, share.ExpectedAmount - share.PaidAmount)
             : invoice.Total;
@@ -270,8 +271,81 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             return BadRequest(new { message = "Hóa đơn không còn số tiền cần thanh toán." });
         }
 
-        var paymentUrl = vnPayService.CreatePaymentUrl(HttpContext, invoice, amount);
-        return Ok(new { paymentUrl });
+        try
+        {
+            var paymentUrl = vnPayService.CreatePaymentUrl(HttpContext, invoice, amount);
+            return Ok(new
+            {
+                paymentMethod = "VNPAY",
+                invoiceId = invoice.Id,
+                invoice.InvoiceCode,
+                amount,
+                paymentUrl
+            });
+        }
+        catch (InvalidOperationException error)
+        {
+            return BadRequest(new { message = error.Message });
+        }
+    }
+
+    [HttpPost("room-finance-shares/{shareId:int}/vnpay/create")]
+    [Authorize]
+    public async Task<IActionResult> CreateShareVnPayPayment(int shareId)
+    {
+        var student = await GetCurrentStudent();
+        if (student is null) return Unauthorized();
+
+        var share = await db.RoomFinanceStudentShares
+            .Include(x => x.Invoice)
+            .Include(x => x.RoomFinanceRecord)
+            .FirstOrDefaultAsync(x => x.Id == shareId && x.StudentId == student.Id);
+
+        if (share is null)
+        {
+            return NotFound(new { message = "Không tìm thấy khoản công nợ của sinh viên đang đăng nhập." });
+        }
+
+        if (share.RoomFinanceRecord is null)
+        {
+            return BadRequest(new { message = "Khoản công nợ chưa liên kết kỳ tài chính phòng." });
+        }
+
+        if (share.Status == "Paid" || share.PaidAmount >= share.ExpectedAmount)
+        {
+            return BadRequest(new { message = "Khoản công nợ này đã được thanh toán." });
+        }
+
+        if (!vnPayService.IsConfigured)
+        {
+            return BadRequest(new { message = "VNPay sandbox chưa được cấu hình. Cần nhập TmnCode và HashSecret trong appsettings.json." });
+        }
+
+        var invoice = await EnsureInvoiceForShareAsync(share, student);
+        var amount = Math.Max(0, share.ExpectedAmount - share.PaidAmount);
+
+        if (amount <= 0)
+        {
+            return BadRequest(new { message = "Khoản công nợ không còn số tiền cần thanh toán." });
+        }
+
+        try
+        {
+            var paymentUrl = vnPayService.CreatePaymentUrl(HttpContext, invoice, amount);
+            return Ok(new
+            {
+                paymentMethod = "VNPAY",
+                shareId = share.Id,
+                invoiceId = invoice.Id,
+                invoice.InvoiceCode,
+                amount,
+                paymentUrl
+            });
+        }
+        catch (InvalidOperationException error)
+        {
+            return BadRequest(new { message = error.Message });
+        }
     }
 
     [HttpGet("vnpay-return")]
@@ -304,14 +378,81 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             return Redirect(vnPayService.BuildClientReturnUrl(false, invoiceId, "Không tìm thấy hóa đơn."));
         }
 
+        if (invoice.Status == "Paid")
+        {
+            return Redirect(vnPayService.BuildClientReturnUrl(true, invoice.Id, "Hóa đơn đã được thanh toán."));
+        }
+
         var paidAmount = vnPayService.GetPaidAmount(Request.Query);
-        await ApplyInvoicePaymentAsync(invoice, paidAmount, "VNPay Sandbox", DateTime.Now);
+        if (paidAmount <= 0)
+        {
+            return Redirect(vnPayService.BuildClientReturnUrl(false, invoiceId, "Số tiền VNPay trả về không hợp lệ."));
+        }
+
+        await ApplyInvoicePaymentAsync(invoice, paidAmount, "VNPAY", DateTime.Now);
         await db.SaveChangesAsync();
 
-        return Redirect(vnPayService.BuildClientReturnUrl(true, invoice.Id, "Thanh toán thành công."));
+        return Redirect(vnPayService.BuildClientReturnUrl(true, invoice.Id, "Thanh toán VNPay thành công."));
     }
 
     // ── Cập nhật thông tin cá nhân ──────────────────────────────────
+
+    [HttpGet("vnpay-ipn")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VnPayIpn()
+    {
+        try
+        {
+            var txnRef = Request.Query["vnp_TxnRef"].ToString();
+            var invoiceId = vnPayService.GetInvoiceIdFromTxnRef(txnRef);
+
+            if (!vnPayService.ValidateReturn(Request.Query))
+            {
+                return VnPayIpnResponse("97", "Invalid signature");
+            }
+
+            if (invoiceId is null)
+            {
+                return VnPayIpnResponse("01", "Order not found");
+            }
+
+            var invoice = await db.Invoices.FirstOrDefaultAsync(x => x.Id == invoiceId.Value);
+            if (invoice is null)
+            {
+                return VnPayIpnResponse("01", "Order not found");
+            }
+
+            if (invoice.Status == "Paid")
+            {
+                return VnPayIpnResponse("02", "Order already confirmed");
+            }
+
+            var paidAmount = vnPayService.GetPaidAmount(Request.Query);
+            var share = await db.RoomFinanceStudentShares.FirstOrDefaultAsync(x => x.InvoiceId == invoice.Id);
+            var expectedAmount = share is not null
+                ? Math.Max(0, share.ExpectedAmount - share.PaidAmount)
+                : invoice.Total;
+
+            if (paidAmount <= 0 || Math.Round(paidAmount, 0) != Math.Round(expectedAmount, 0))
+            {
+                return VnPayIpnResponse("04", "Invalid amount");
+            }
+
+            var responseCode = Request.Query["vnp_ResponseCode"].ToString();
+            var transactionStatus = Request.Query["vnp_TransactionStatus"].ToString();
+            if (responseCode == "00" && transactionStatus == "00")
+            {
+                await ApplyInvoicePaymentAsync(invoice, paidAmount, "VNPAY", DateTime.Now);
+                await db.SaveChangesAsync();
+            }
+
+            return VnPayIpnResponse("00", "Confirm Success");
+        }
+        catch
+        {
+            return VnPayIpnResponse("99", "Unknown error");
+        }
+    }
 
     [HttpPut("profile")]
     [Authorize]
@@ -577,6 +718,15 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
 
     // ── Helpers ──────────────────────────────────────────────────────
 
+    private IActionResult VnPayIpnResponse(string rspCode, string message)
+    {
+        return Ok(new Dictionary<string, string>
+        {
+            ["RspCode"] = rspCode,
+            ["Message"] = message
+        });
+    }
+
     private async Task ApplyInvoicePaymentAsync(Invoices invoice, decimal paidAmount, string paymentMethod, DateTime paidDate)
     {
         var share = await db.RoomFinanceStudentShares
@@ -605,6 +755,53 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             db,
             share.RoomFinanceRecordId,
             paidDate);
+    }
+
+    private async Task<Invoices> EnsureInvoiceForShareAsync(RoomFinanceStudentShare share, Students student)
+    {
+        if (share.Invoice is not null)
+        {
+            return share.Invoice;
+        }
+
+        if (share.InvoiceId.HasValue)
+        {
+            var linkedInvoice = await db.Invoices.FirstOrDefaultAsync(x => x.Id == share.InvoiceId.Value && x.StudentId == student.Id);
+            if (linkedInvoice is not null)
+            {
+                share.Invoice = linkedInvoice;
+                return linkedInvoice;
+            }
+        }
+
+        var record = share.RoomFinanceRecord!;
+        var invoice = new Invoices
+        {
+            InvoiceCode = $"INV-{record.BillingMonth:yyyyMM}-{student.StudentCode}-{share.Id}",
+            StudentId = student.Id,
+            RoomId = record.RoomId,
+            UtilityId = record.UtilityId,
+            RoomFee = Math.Round(share.ExpectedAmount, 0),
+            ElectricityFee = 0,
+            WaterFee = 0,
+            ServiceFee = 0,
+            Total = Math.Round(share.ExpectedAmount, 0),
+            Status = share.Status == "Paid" ? "Paid" : "Unpaid",
+            BillingMonth = record.BillingMonth,
+            DueDate = record.DueDate,
+            PaidDate = share.Status == "Paid" ? share.PaidDate : null,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.Invoices.Add(invoice);
+        await db.SaveChangesAsync();
+
+        share.InvoiceId = invoice.Id;
+        share.Invoice = invoice;
+        share.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return invoice;
     }
 
     private int? GetCurrentUserId()

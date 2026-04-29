@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CrudPanel, Panel } from '../../components'
 import { apiFetch, currencyFormat, numberFormat, readError, shortDate } from '../../helpers'
 
@@ -35,6 +35,9 @@ export function FinanceSection({
   const [shareError, setShareError] = useState('')
   const [shareNotice, setShareNotice] = useState('')
   const [shareLoading, setShareLoading] = useState(false)
+  const [vnPayDialog, setVnPayDialog] = useState(null)
+  const [vnPayLoading, setVnPayLoading] = useState(false)
+  const sharePanelRef = useRef(null)
 
   const totalExpected = data.roomFinances.reduce((sum, item) => sum + Number(item.total ?? 0), 0)
   const totalCollected = data.roomFinances.reduce((sum, item) => sum + Number(item.paidAmount ?? 0), 0)
@@ -43,12 +46,37 @@ export function FinanceSection({
   const partialRooms = data.roomFinances.filter((item) => item.status === 'PartiallyPaid').length
   const lateRooms = data.roomFinances.filter((item) => item.status === 'Late').length
   const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0
+  const supportedPaymentMethods = data.paymentMethods.filter((method) => ['CASH', 'VNPAY'].includes(String(method.code).toUpperCase()))
+  const collectionPaymentMethods = supportedPaymentMethods.some((method) => String(method.code).toUpperCase() === 'CASH')
+    ? supportedPaymentMethods
+    : [{ id: 'cash-fallback', code: 'Cash', name: 'Tiền mặt' }, ...supportedPaymentMethods]
 
-  async function loadShares(record) {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const paymentStatus = params.get('paymentStatus')
+    const message = params.get('message')
+    if (paymentStatus === 'success') {
+      setShareNotice(message || 'Thanh toán VNPay thành công. Hệ thống đã ghi nhận đã thu tiền.')
+      refreshData?.()
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (paymentStatus === 'failed') {
+      setShareError(message || 'Thanh toán VNPay chưa thành công.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [refreshData])
+
+  function scrollToSharePanel() {
+    window.setTimeout(() => {
+      sharePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }
+
+  async function loadShares(record, options = {}) {
+    const { clearNotice = true, scroll = true } = options
     try {
       setShareLoading(true)
       setShareError('')
-      setShareNotice('')
+      if (clearNotice) setShareNotice('')
       setSelectedRecord(record)
       const response = await apiFetch(`/api/operations/room-finances/${record.id}/shares`)
       if (!response.ok) {
@@ -66,8 +94,10 @@ export function FinanceSection({
           note: item.note || '',
         },
       ])))
+      if (scroll) scrollToSharePanel()
     } catch (error) {
       setShareError(error.message)
+      if (scroll) scrollToSharePanel()
     } finally {
       setShareLoading(false)
     }
@@ -83,14 +113,40 @@ export function FinanceSection({
     }))
   }
 
-  async function generateShares() {
-    if (!selectedRecord) return
-    await executeAction(
-      () => apiFetch(`/api/operations/room-finances/${selectedRecord.id}/generate-shares`, { method: 'POST' }),
-      'Đã chia tiền và tạo hóa đơn riêng cho từng sinh viên.',
-    )
-    await refreshData?.()
-    await loadShares(selectedRecord)
+  function selectPaymentMethod(share, method) {
+    updateShareForm(share.id, 'paymentMethod', method)
+    if (method === 'VNPAY') {
+      const form = shareForms[share.id] || {}
+      setVnPayDialog({
+        share,
+        amount: Number(form.paidAmount || share.remainingAmount || 0),
+      })
+    }
+  }
+
+  async function generateShares(record = selectedRecord) {
+    if (!record) return
+    try {
+      setShareLoading(true)
+      setShareError('')
+      setShareNotice('')
+      setSelectedRecord(record)
+      scrollToSharePanel()
+
+      const response = await apiFetch(`/api/operations/room-finances/${record.id}/generate-shares`, { method: 'POST' })
+      if (!response.ok) {
+        throw new Error(await readError(response))
+      }
+
+      setShareNotice('Đã chia tiền và tạo hóa đơn riêng cho từng sinh viên trong phòng.')
+      await refreshData?.()
+      await loadShares(record, { clearNotice: false, scroll: true })
+    } catch (error) {
+      setShareError(error.message)
+      scrollToSharePanel()
+    } finally {
+      setShareLoading(false)
+    }
   }
 
   async function adjustShare(share) {
@@ -121,6 +177,11 @@ export function FinanceSection({
 
   async function payShare(share) {
     const form = shareForms[share.id] || {}
+    if ((form.paymentMethod || '') !== 'Cash') {
+      setShareError('Vui lòng chọn Tiền mặt để xác nhận đã thu tại quầy.')
+      return
+    }
+
     try {
       setShareError('')
       setShareNotice('')
@@ -130,7 +191,7 @@ export function FinanceSection({
         body: JSON.stringify({
           paidAmount: Number(form.paidAmount || 0),
           paidDate: new Date().toISOString(),
-          paymentMethod: form.paymentMethod || 'Cash',
+          paymentMethod: 'Cash',
           note: form.note || 'Thu tiền theo phần chia sinh viên.',
         }),
       })
@@ -144,6 +205,42 @@ export function FinanceSection({
       await loadShares(selectedRecord)
     } catch (error) {
       setShareError(error.message)
+    }
+  }
+
+  async function startVnPayPayment() {
+    if (!vnPayDialog?.share) return
+    try {
+      setVnPayLoading(true)
+      setShareError('')
+      setShareNotice('')
+      const response = await apiFetch(`/api/operations/room-finance-shares/${vnPayDialog.share.id}/vnpay/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!response.ok) {
+        throw new Error(await readError(response))
+      }
+
+      const data = await response.json()
+      if (!data.paymentUrl) {
+        throw new Error('API không trả về link thanh toán VNPay.')
+      }
+
+      setVnPayDialog((current) => current
+        ? {
+            ...current,
+            paymentUrl: data.paymentUrl,
+            amount: data.amount ?? current.amount,
+            invoiceCode: data.invoiceCode ?? current.share.invoiceCode,
+          }
+        : current)
+      setShareNotice('Đã tạo link thanh toán VNPay. Vui lòng hoàn tất giao dịch trong cửa sổ thanh toán.')
+      setVnPayLoading(false)
+    } catch (error) {
+      setShareError(error.message)
+      setVnPayDialog(null)
+      setVnPayLoading(false)
     }
   }
 
@@ -261,11 +358,17 @@ export function FinanceSection({
         onDelete={deleteEntity}
         panelProps={{ ...getPanelProps('finance-room-finances'), panelId: 'panel-finance-room-finances' }}
         extraRowActions={(item) => [
-          {
-            label: 'Chi tiết SV',
-            kind: 'approve',
-            onClick: () => loadShares(item),
-          },
+          item.shareCount === 0
+            ? {
+                label: 'Chia tiền SV',
+                kind: 'approve',
+                onClick: () => generateShares(item),
+              }
+            : {
+                label: 'Xem phần chia',
+                kind: 'approve',
+                onClick: () => loadShares(item),
+              },
           item.utilityId
             ? {
                 label: 'Đồng bộ từ điện nước',
@@ -274,17 +377,6 @@ export function FinanceSection({
                   executeAction(
                     () => apiFetch(`/api/operations/room-finances/generate-from-utility/${item.utilityId}`, { method: 'POST' }),
                     'Đã cập nhật công nợ phòng từ dữ liệu điện nước.',
-                  ),
-              }
-            : null,
-          item.shareCount === 0
-            ? {
-                label: 'Chia tiền + tạo hóa đơn',
-                kind: 'approve',
-                onClick: () =>
-                  executeAction(
-                    () => apiFetch(`/api/operations/room-finances/${item.id}/generate-shares`, { method: 'POST' }),
-                    'Đã chia tiền và tạo hóa đơn riêng cho từng sinh viên.',
                   ),
               }
             : null,
@@ -314,11 +406,12 @@ export function FinanceSection({
       />
 
       {selectedRecord ? (
-        <Panel
-          title={`Chi tiết thu tiền sinh viên - phòng ${selectedRecord.roomNumber}`}
-          description="Theo dõi phần tiền từng sinh viên, chỉnh số phải nộp và ghi nhận thanh toán theo từng người."
-          {...getPanelProps('finance-student-shares')}
-        >
+        <div ref={sharePanelRef}>
+          <Panel
+            title={`Chi tiết thu tiền sinh viên - phòng ${selectedRecord.roomNumber}`}
+            description="Theo dõi phần tiền từng sinh viên, chỉnh số phải nộp và ghi nhận thanh toán theo từng người."
+            {...getPanelProps('finance-student-shares')}
+          >
           {shareError ? <div className="feedback error">{shareError}</div> : null}
           {shareNotice ? <div className="feedback success">{shareNotice}</div> : null}
           <div className="finance-share-summary">
@@ -343,7 +436,9 @@ export function FinanceSection({
             <div className="empty-state">
               Chưa có phần chia cho sinh viên trong phòng này.
               <div style={{ marginTop: 12 }}>
-                <button className="primary-button" onClick={generateShares}>Chia tiền cho sinh viên</button>
+                <button className="primary-button" onClick={() => generateShares()} disabled={shareLoading}>
+                  {shareLoading ? 'Đang chia tiền...' : 'Chia tiền cho sinh viên'}
+                </button>
               </div>
             </div>
           ) : (
@@ -387,20 +482,33 @@ export function FinanceSection({
                         <td data-label="Ghi nhận">
                           <div className="share-payment-fields">
                             <input type="number" min="0" value={form.paidAmount ?? ''} onChange={(event) => updateShareForm(share.id, 'paidAmount', event.target.value)} placeholder="Số tiền thu" />
-                            <select value={form.paymentMethod || ''} onChange={(event) => updateShareForm(share.id, 'paymentMethod', event.target.value)}>
-                              <option value="">Hình thức thu</option>
-                              {data.paymentMethods.map((method) => (
-                                <option key={method.id} value={method.code}>{method.name}</option>
-                              ))}
-                              <option value="Cash">Tiền mặt</option>
-                            </select>
+                            <div className="payment-method-picker" aria-label="Hình thức thu">
+                              {collectionPaymentMethods.map((method) => {
+                                const code = String(method.code).toUpperCase()
+                                const value = code === 'VNPAY' ? 'VNPAY' : 'Cash'
+                                const active = (form.paymentMethod || '') === value
+                                return (
+                                  <button
+                                    key={method.id}
+                                    type="button"
+                                    className={active ? 'payment-method-option active' : 'payment-method-option'}
+                                    onClick={() => selectPaymentMethod(share, value)}
+                                  >
+                                    {value === 'VNPAY' ? <img src="/vnpay-logo.svg" alt="" aria-hidden="true" /> : <span className="cash-method-icon">₫</span>}
+                                    <span>{value === 'VNPAY' ? 'VNPay' : 'Tiền mặt'}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
                             <input value={form.note || ''} onChange={(event) => updateShareForm(share.id, 'note', event.target.value)} placeholder="Ghi chú" />
                           </div>
                         </td>
                         <td data-label="Thao tác">
                           <div className="action-row">
                             <button className="ghost-button" onClick={() => adjustShare(share)}>Lưu phần tiền</button>
-                            <button className="ghost-button approve" onClick={() => payShare(share)}>Thu khoản này</button>
+                            {(form.paymentMethod || '') === 'Cash' ? (
+                              <button className="ghost-button approve" onClick={() => payShare(share)}>Xác nhận đã thu</button>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -410,7 +518,65 @@ export function FinanceSection({
               </table>
             </div>
           )}
-        </Panel>
+          </Panel>
+        </div>
+      ) : null}
+
+      {vnPayDialog ? (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !vnPayLoading) setVnPayDialog(null)
+        }}>
+          <div className="modal-card vnpay-payment-modal vnpay-frame-modal" role="dialog" aria-modal="true" aria-labelledby="vnpay-admin-title">
+            <div className="vnpay-payment-header">
+              <img src="/vnpay-logo.svg" alt="VNPay" />
+              <div>
+                <h2 id="vnpay-admin-title">Thanh toán qua VNPay</h2>
+                <p>Hoàn tất thanh toán trong khung bên dưới. Nếu ngân hàng hoặc VNPay chặn nhúng, hãy dùng nút mở tab mới.</p>
+              </div>
+            </div>
+            <div className="vnpay-payment-summary">
+              <div>
+                <span>Sinh viên</span>
+                <strong>{vnPayDialog.share.studentName}</strong>
+              </div>
+              <div>
+                <span>Hóa đơn</span>
+                <strong>{vnPayDialog.invoiceCode || vnPayDialog.share.invoiceCode || '-'}</strong>
+              </div>
+              <div>
+                <span>Số tiền còn lại</span>
+                <strong>{currencyFormat.format(vnPayDialog.share.remainingAmount || vnPayDialog.amount || 0)}</strong>
+              </div>
+            </div>
+            {vnPayDialog.paymentUrl ? (
+              <div className="vnpay-frame-shell">
+                <iframe
+                  className="vnpay-frame"
+                  title="Cổng thanh toán VNPay"
+                  src={vnPayDialog.paymentUrl}
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            ) : null}
+            <div className="modal-footer">
+              <button className="secondary-button" onClick={() => setVnPayDialog(null)} disabled={vnPayLoading}>Đóng</button>
+              {vnPayDialog.paymentUrl ? (
+                <button className="ghost-button" type="button" onClick={() => window.open(vnPayDialog.paymentUrl, '_blank', 'noopener,noreferrer')}>
+                  Mở tab mới
+                </button>
+              ) : null}
+              {vnPayDialog.paymentUrl ? (
+                <button className="primary-button" type="button" onClick={() => refreshData?.()}>
+                  Làm mới trạng thái
+                </button>
+              ) : (
+                <button className="primary-button" onClick={startVnPayPayment} disabled={vnPayLoading}>
+                  {vnPayLoading ? 'Đang tạo link VNPay...' : 'Tạo link thanh toán'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   )

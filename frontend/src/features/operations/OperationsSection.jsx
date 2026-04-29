@@ -51,7 +51,7 @@ export function OperationsSection({
 
   async function loadMessages() {
     try {
-      const response = await apiFetch('/api/operations/messages')
+      const response = await apiFetch('/api/operations/messages', { skipGlobalLoading: true })
       if (response.ok) setMessages(await response.json())
     } catch {
       // Keep silent here; send failures are shown explicitly.
@@ -92,6 +92,7 @@ export function OperationsSection({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ receiverId: Number(chatForm.receiverId), content: chatForm.content }),
+        skipGlobalLoading: true,
       })
 
       if (!response.ok) {

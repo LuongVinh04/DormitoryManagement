@@ -8,6 +8,9 @@ namespace DormitoryManagement.Services;
 
 public class VnPayService(IConfiguration configuration)
 {
+    private const string Version = "2.1.0";
+    private const string DefaultPaymentUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+
     public bool IsConfigured
     {
         get
@@ -22,33 +25,34 @@ public class VnPayService(IConfiguration configuration)
     {
         if (!IsConfigured)
         {
-            throw new InvalidOperationException("VNPay chua duoc cau hinh TmnCode/HashSecret sandbox.");
+            throw new InvalidOperationException("VNPay chưa được cấu hình TmnCode/HashSecret sandbox.");
         }
 
         if (amount <= 0)
         {
-            throw new InvalidOperationException("So tien thanh toan phai lon hon 0.");
+            throw new InvalidOperationException("Số tiền thanh toán phải lớn hơn 0.");
         }
 
         var now = DateTime.Now;
-        var txnRef = $"{invoice.Id}-{now:yyyyMMddHHmmssfff}";
+        var txnRef = $"I{invoice.Id}T{now:yyyyMMddHHmmssfff}";
         var returnUrl = configuration["VNPay:ReturnUrl"];
         if (string.IsNullOrWhiteSpace(returnUrl))
         {
             returnUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/api/student-portal/vnpay-return";
         }
 
-        var parameters = new SortedDictionary<string, string>
+        var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["vnp_Version"] = "2.1.0",
+            ["vnp_Version"] = Version,
             ["vnp_Command"] = "pay",
             ["vnp_TmnCode"] = configuration["VNPay:TmnCode"]!,
             ["vnp_Amount"] = ((long)Math.Round(amount, 0) * 100).ToString(CultureInfo.InvariantCulture),
             ["vnp_CreateDate"] = now.ToString("yyyyMMddHHmmss"),
             ["vnp_CurrCode"] = "VND",
+            ["vnp_ExpireDate"] = now.AddMinutes(15).ToString("yyyyMMddHHmmss"),
             ["vnp_IpAddr"] = GetIpAddress(httpContext),
             ["vnp_Locale"] = "vn",
-            ["vnp_OrderInfo"] = $"Thanh toan hoa don {invoice.InvoiceCode}",
+            ["vnp_OrderInfo"] = $"Thanh toan hoa don ky tuc xa {invoice.Id}",
             ["vnp_OrderType"] = "billpayment",
             ["vnp_ReturnUrl"] = returnUrl,
             ["vnp_TxnRef"] = txnRef
@@ -56,7 +60,7 @@ public class VnPayService(IConfiguration configuration)
 
         var hashData = BuildQuery(parameters);
         var secureHash = HmacSha512(configuration["VNPay:HashSecret"]!, hashData);
-        var paymentUrl = configuration["VNPay:PaymentUrl"] ?? "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+        var paymentUrl = configuration["VNPay:PaymentUrl"] ?? DefaultPaymentUrl;
         return $"{paymentUrl}?{hashData}&vnp_SecureHash={secureHash}";
     }
 
@@ -73,7 +77,7 @@ public class VnPayService(IConfiguration configuration)
             return false;
         }
 
-        var parameters = new SortedDictionary<string, string>();
+        var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var item in query)
         {
             if (item.Key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) ||
@@ -99,8 +103,20 @@ public class VnPayService(IConfiguration configuration)
             return null;
         }
 
-        var firstPart = txnRef.Split('-', 2)[0];
-        return int.TryParse(firstPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var invoiceId)
+        var normalized = txnRef.Trim();
+        if (normalized.StartsWith("I", StringComparison.OrdinalIgnoreCase))
+        {
+            var endIndex = normalized.IndexOf('T', StringComparison.OrdinalIgnoreCase);
+            normalized = endIndex > 1
+                ? normalized[1..endIndex]
+                : normalized[1..];
+        }
+        else if (normalized.Contains('-'))
+        {
+            normalized = normalized.Split('-', 2)[0];
+        }
+
+        return int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var invoiceId)
             ? invoiceId
             : null;
     }

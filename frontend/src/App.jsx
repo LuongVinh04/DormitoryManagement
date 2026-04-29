@@ -86,6 +86,33 @@ function App() {
     sessionStorage.removeItem('dormitory_lazy_retry')
   }, [])
 
+  useEffect(() => {
+    function focusFieldFromAnySafePoint(event) {
+      if (event.button !== undefined && event.button !== 0) return
+      const target = event.target
+      if (!(target instanceof Element)) return
+
+      if (target.closest('input, select, textarea, button, a, [role="button"]')) {
+        return
+      }
+
+      const field = target.closest('.field, .form-group, .student-portal-edit-form label, .message-composer label')
+      const control = field?.querySelector('input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)')
+      if (!control) return
+
+      window.requestAnimationFrame(() => {
+        control.focus({ preventScroll: true })
+        if (control instanceof HTMLInputElement && ['text', 'email', 'password', 'search', 'tel', 'url', ''].includes(control.type)) {
+          const end = control.value.length
+          control.setSelectionRange(end, end)
+        }
+      })
+    }
+
+    document.addEventListener('pointerdown', focusFieldFromAnySafePoint, true)
+    return () => document.removeEventListener('pointerdown', focusFieldFromAnySafePoint, true)
+  }, [])
+
   const allowedNavs = NAVIGATION.filter((item) => {
     switch (item.key) {
       case 'overview': return hasPermission('dashboard.view')

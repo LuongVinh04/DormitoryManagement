@@ -1,6 +1,7 @@
 using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Models;
+using DormitoryManagement.Services;
 using DormitoryManagement.Services.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ namespace DormitoryManagement.Controllers.Operations;
 
 [ApiController]
 [Route("api/operations")]
-public class OperationsController(AppDbContext db) : ControllerBase
+public class OperationsController(AppDbContext db, VnPayService vnPayService) : ControllerBase
 {
     [HttpGet("registrations")]
     public async Task<IActionResult> GetRegistrations()
@@ -504,8 +505,28 @@ public class OperationsController(AppDbContext db) : ControllerBase
     [HttpPost("room-finances")]
     public async Task<IActionResult> CreateRoomFinanceRecord([FromBody] RoomFinanceRecordRequest request)
     {
+        if (request.RoomId <= 0)
+        {
+            return BadRequest(new { message = "Vui lòng chọn phòng cần tạo công nợ." });
+        }
+
+        var roomExists = await db.Rooms.AnyAsync(x => x.Id == request.RoomId);
+        if (!roomExists)
+        {
+            return BadRequest(new { message = "Phòng được chọn không tồn tại." });
+        }
+
         var profile = await db.RoomFeeProfiles.FirstOrDefaultAsync(x => x.RoomId == request.RoomId);
         var utility = request.UtilityId.HasValue ? await db.Utilities.FindAsync(request.UtilityId.Value) : null;
+        if (request.UtilityId.HasValue && utility is null)
+        {
+            return BadRequest(new { message = "Kỳ điện nước được chọn không tồn tại." });
+        }
+
+        if (utility is not null && utility.RoomId != request.RoomId)
+        {
+            return BadRequest(new { message = "Kỳ điện nước không thuộc phòng đang tạo công nợ." });
+        }
 
         var monthlyRoomFee = request.MonthlyRoomFee > 0 ? request.MonthlyRoomFee : (profile?.MonthlyRoomFee ?? 0);
         var hygieneFee = request.HygieneFee > 0 ? request.HygieneFee : (profile?.HygieneFee ?? 0);
@@ -522,7 +543,18 @@ public class OperationsController(AppDbContext db) : ControllerBase
             if (waterFee == 0) waterFee = (utility.WaterNew - utility.WaterOld) * utility.WaterUnitPrice;
         }
 
-        var billingMonth = new DateTime(request.BillingMonth.Year, request.BillingMonth.Month, 1);
+        var requestedBillingMonth = request.BillingMonth == default ? DateTime.Today : request.BillingMonth;
+        var billingMonth = new DateTime(requestedBillingMonth.Year, requestedBillingMonth.Month, 1);
+        var duplicateRecord = await db.RoomFinanceRecords.AnyAsync(x => x.RoomId == request.RoomId && x.BillingMonth == billingMonth);
+        if (duplicateRecord)
+        {
+            return BadRequest(new { message = "Phòng này đã có công nợ cho kỳ được chọn." });
+        }
+
+        var dueDay = Math.Clamp(profile?.BillingCycleDay ?? 10, 1, DateTime.DaysInMonth(billingMonth.Year, billingMonth.Month));
+        var dueDate = request.DueDate == default
+            ? new DateTime(billingMonth.Year, billingMonth.Month, dueDay)
+            : request.DueDate;
         var totalAmount = monthlyRoomFee + electricityFee + waterFee + hygieneFee + serviceFee + internetFee + otherFee;
 
         var entity = new RoomFinanceRecord
@@ -538,17 +570,13 @@ public class OperationsController(AppDbContext db) : ControllerBase
             InternetFee = internetFee,
             OtherFee = otherFee,
             Total = totalAmount,
-            PaidAmount = request.PaidAmount,
-            Status = DormitoryWorkflowService.ResolveFinanceStatus(
-                request.PaidAmount,
-                totalAmount,
-                request.DueDate,
-                request.PaidDate),
-            DueDate = request.DueDate,
-            PaidDate = request.PaidDate,
-            PaymentMethod = request.PaymentMethod.Trim(),
-            PaymentNote = request.PaymentNote.Trim(),
-            RecordedBy = request.RecordedBy.Trim()
+            PaidAmount = 0,
+            Status = "Unpaid",
+            DueDate = dueDate,
+            PaidDate = null,
+            PaymentMethod = string.Empty,
+            PaymentNote = string.Empty,
+            RecordedBy = string.Empty
         };
 
         db.RoomFinanceRecords.Add(entity);
@@ -577,9 +605,9 @@ public class OperationsController(AppDbContext db) : ControllerBase
         entity.PaidAmount = request.PaidAmount;
         entity.DueDate = request.DueDate;
         entity.PaidDate = request.PaidDate;
-        entity.PaymentMethod = request.PaymentMethod.Trim();
-        entity.PaymentNote = request.PaymentNote.Trim();
-        entity.RecordedBy = request.RecordedBy.Trim();
+        entity.PaymentMethod = request.PaymentMethod?.Trim() ?? string.Empty;
+        entity.PaymentNote = request.PaymentNote?.Trim() ?? string.Empty;
+        entity.RecordedBy = request.RecordedBy?.Trim() ?? string.Empty;
         entity.Status = DormitoryWorkflowService.ResolveFinanceStatus(entity.PaidAmount, entity.Total, entity.DueDate, entity.PaidDate);
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -607,12 +635,18 @@ public class OperationsController(AppDbContext db) : ControllerBase
     [HttpPost("room-finances/{id:int}/mark-paid")]
     public async Task<IActionResult> MarkRoomFinancePaid(int id, [FromBody] RoomFinancePaymentRequest request)
     {
+        var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
+        if (paymentMethod is null)
+        {
+            return BadRequest(new { message = "Hệ thống chỉ hỗ trợ thu tiền mặt hoặc VNPay." });
+        }
+
         var result = await DormitoryWorkflowService.MarkRoomFinancePaidAsync(
             db,
             id,
             request.PaidAmount,
             request.PaidDate ?? DateTime.Today,
-            request.PaymentMethod,
+            paymentMethod,
             request.PaymentNote,
             request.RecordedBy);
 
@@ -734,7 +768,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
         {
             share.PaidAmount = share.ExpectedAmount;
             share.PaidDate = entity.PaidDate;
-            share.PaymentMethod = string.IsNullOrWhiteSpace(share.PaymentMethod) ? "Manual" : share.PaymentMethod;
+            share.PaymentMethod = string.IsNullOrWhiteSpace(share.PaymentMethod) ? "Cash" : share.PaymentMethod;
             share.Status = "Paid";
             share.UpdatedAt = DateTime.UtcNow;
             await DormitoryWorkflowService.UpdateRoomFinanceFromSharesAsync(db, share.RoomFinanceRecordId, share.PaidDate);
@@ -910,6 +944,12 @@ public class OperationsController(AppDbContext db) : ControllerBase
     [HttpPost("room-finance-shares/{shareId:int}/mark-paid")]
     public async Task<IActionResult> MarkStudentSharePaid(int shareId, [FromBody] StudentSharePaymentRequest request)
     {
+        var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
+        if (paymentMethod is null)
+        {
+            return BadRequest(new { message = "Hệ thống chỉ hỗ trợ thu tiền mặt hoặc VNPay." });
+        }
+
         var share = await db.RoomFinanceStudentShares
             .Include(x => x.RoomFinanceRecord)
             .Include(x => x.Invoice)
@@ -923,7 +963,7 @@ public class OperationsController(AppDbContext db) : ControllerBase
 
         share.PaidAmount = Math.Min(share.ExpectedAmount, share.PaidAmount + request.PaidAmount);
         share.PaidDate = request.PaidDate ?? DateTime.Today;
-        share.PaymentMethod = request.PaymentMethod.Trim();
+        share.PaymentMethod = paymentMethod;
         share.Note = request.Note.Trim();
         share.Status = share.PaidAmount >= share.ExpectedAmount ? "Paid" : "PartiallyPaid";
         share.UpdatedAt = DateTime.UtcNow;
@@ -939,6 +979,76 @@ public class OperationsController(AppDbContext db) : ControllerBase
 
         await db.SaveChangesAsync();
         return Ok(new { message = "Đã ghi nhận thanh toán phần chia." });
+    }
+
+    [HttpPost("room-finance-shares/{shareId:int}/vnpay/create")]
+    public async Task<IActionResult> CreateStudentShareVnPayPayment(int shareId)
+    {
+        var share = await db.RoomFinanceStudentShares
+            .Include(x => x.Invoice)
+            .Include(x => x.Student)
+            .FirstOrDefaultAsync(x => x.Id == shareId);
+        if (share is null) return NotFound();
+
+        if (share.Status == "Paid" || share.PaidAmount >= share.ExpectedAmount)
+        {
+            return BadRequest(new { message = "Khoản này đã được thanh toán." });
+        }
+
+        if (share.Invoice is null)
+        {
+            return BadRequest(new { message = "Phần chia này chưa có hóa đơn để thanh toán qua VNPay." });
+        }
+
+        if (!vnPayService.IsConfigured)
+        {
+            return BadRequest(new { message = "VNPay sandbox chưa được cấu hình. Cần nhập TmnCode và HashSecret trong appsettings.json." });
+        }
+
+        var amount = Math.Max(0, share.ExpectedAmount - share.PaidAmount);
+        if (amount <= 0)
+        {
+            return BadRequest(new { message = "Khoản này không còn số tiền cần thanh toán." });
+        }
+
+        try
+        {
+            var paymentUrl = vnPayService.CreatePaymentUrl(HttpContext, share.Invoice, amount);
+            return Ok(new
+            {
+                paymentMethod = "VNPAY",
+                shareId = share.Id,
+                invoiceId = share.Invoice.Id,
+                share.Invoice.InvoiceCode,
+                studentName = share.Student?.Name,
+                amount,
+                paymentUrl
+            });
+        }
+        catch (InvalidOperationException error)
+        {
+            return BadRequest(new { message = error.Message });
+        }
+    }
+
+    private static string? NormalizePaymentMethod(string? value)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? "Cash" : value.Trim();
+
+        if (normalized.Equals("Cash", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("Tiền mặt", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("Tien mat", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Cash";
+        }
+
+        if (normalized.Equals("VNPAY", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("VNPay", StringComparison.OrdinalIgnoreCase))
+        {
+            return "VNPAY";
+        }
+
+        return null;
     }
 
     [HttpDelete("room-finance-shares/{shareId:int}")]

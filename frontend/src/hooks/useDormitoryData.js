@@ -151,10 +151,16 @@ export function useDormitoryData() {
 
     if (entityKey === 'roomFinances') {
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      const defaultDueDate = new Date(startOfMonth)
+      defaultDueDate.setDate(10)
       defaults.billingMonth = formatDateInput(startOfMonth.toISOString())
+      defaults.dueDate = formatDateInput(defaultDueDate.toISOString())
       defaults.paidAmount = 0
       defaults.status = 'Unpaid'
       defaults.paymentMethod = ''
+      defaults.paidDate = ''
+      defaults.recordedBy = ''
+      defaults.paymentNote = ''
     }
 
     if (entityKey === 'students') {
@@ -255,7 +261,8 @@ export function useDormitoryData() {
 
     const { entityKey, mode, id, values } = modal
     const endpoint = mode === 'create' ? API_ENDPOINTS[entityKey] : `${API_ENDPOINTS[entityKey]}/${id}`
-    const nextFormErrors = validatePayload(ENTITY_CONFIGS[entityKey].fields, values)
+    const fields = getModalFields(entityKey, mode)
+    const nextFormErrors = validatePayload(fields, values)
 
     if (Object.keys(nextFormErrors).length > 0) {
       setFormErrors(nextFormErrors)
@@ -271,7 +278,7 @@ export function useDormitoryData() {
       const response = await apiFetch(endpoint, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(normalizePayload(ENTITY_CONFIGS[entityKey].fields, values)),
+        body: JSON.stringify(normalizePayload(fields, values)),
       })
 
       if (!response.ok) {
@@ -366,4 +373,12 @@ export function useDormitoryData() {
     setSelectedRoomId,
     updateModalField,
   }
+}
+
+function getModalFields(entityKey, mode) {
+  return ENTITY_CONFIGS[entityKey].fields.filter((field) => {
+    if (mode === 'create' && field.editOnly) return false
+    if (mode !== 'create' && field.createOnly) return false
+    return true
+  })
 }

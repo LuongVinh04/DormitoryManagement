@@ -30,7 +30,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
 
         var accountMap = await db.Users
             .Where(x => x.StudentId != null)
-            .ToDictionaryAsync(x => x.StudentId!.Value, x => x.Username);
+            .ToDictionaryAsync(x => x.StudentId!.Value);
 
         var data = students.Select(x =>
         {
@@ -51,7 +51,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
 
             var isExpiredInGrace = activeExpiredContract is not null && activeExpiredContract.EndDate.Date > cancelCutoff;
             var hasValidContract = validContract is not null;
-            var hasAccount = accountMap.TryGetValue(x.Id, out var accountUsername);
+            var hasAccount = accountMap.TryGetValue(x.Id, out var account);
             var isVisibleInRoom = x.RoomId != null && hasValidContract;
 
             var contractState = hasValidContract
@@ -83,7 +83,10 @@ public class PeopleController(AppDbContext db) : ControllerBase
                 roomNumber = isVisibleInRoom ? x.Room?.RoomNumber : null,
                 buildingName = isVisibleInRoom ? x.Room?.Building?.Name : null,
                 hasAccount,
-                accountUsername = hasAccount ? accountUsername : null,
+                accountUserId = hasAccount ? account!.Id : (int?)null,
+                accountUsername = hasAccount ? account!.Username : null,
+                accountEmail = hasAccount ? account!.Email : null,
+                accountIsActive = hasAccount ? account!.IsActive : (bool?)null,
                 canAssignRoom = hasValidContract,
                 isVisibleInRoom,
                 contractState,
@@ -274,6 +277,87 @@ public class PeopleController(AppDbContext db) : ControllerBase
         entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(new { message = "Đã cập nhật trạng thái sinh viên." });
+    }
+
+    [HttpPut("students/{id:int}/account")]
+    public async Task<IActionResult> UpsertStudentAccount(int id, [FromBody] StudentAccountRequest request)
+    {
+        var student = await db.Students.FindAsync(id);
+        if (student is null) return NotFound();
+
+        var username = request.Username.Trim();
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return BadRequest(new { message = "Vui lòng nhập tên đăng nhập." });
+        }
+
+        var email = string.IsNullOrWhiteSpace(request.Email) ? student.Email : request.Email.Trim();
+        var account = await db.Users.FirstOrDefaultAsync(x => x.StudentId == student.Id);
+        var duplicatedUsername = await db.Users.AnyAsync(x => x.Username == username && (account == null || x.Id != account.Id));
+        if (duplicatedUsername)
+        {
+            return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
+        }
+
+        var studentRole = await db.Roles.FirstOrDefaultAsync(x => x.Name == "Student");
+        if (studentRole is null)
+        {
+            studentRole = new Roles
+            {
+                Name = "Student",
+                Description = "Tài khoản sinh viên"
+            };
+            db.Roles.Add(studentRole);
+            await db.SaveChangesAsync();
+        }
+
+        if (account is null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { message = "Vui lòng nhập mật khẩu ban đầu khi cấp tài khoản mới." });
+            }
+
+            account = new Users
+            {
+                Username = username,
+                FullName = student.Name,
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                RoleId = studentRole.Id,
+                StudentId = student.Id,
+                IsActive = request.IsActive
+            };
+            db.Users.Add(account);
+        }
+        else
+        {
+            account.Username = username;
+            account.FullName = student.Name;
+            account.Email = email;
+            account.RoleId = studentRole.Id;
+            account.IsActive = request.IsActive;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrWhiteSpace(request.Password))
+            {
+                account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            }
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(new
+        {
+            message = "Đã cập nhật tài khoản sinh viên.",
+            account = new
+            {
+                account.Id,
+                account.Username,
+                account.Email,
+                account.StudentId,
+                account.IsActive
+            }
+        });
     }
 
     [HttpDelete("students/{id:int}")]

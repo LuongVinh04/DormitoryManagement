@@ -110,18 +110,34 @@ export function ActionCard({ title, description, actionLabel, disabled, onAction
 export function ModalCard({ title, subtitle, children, footer, onClose }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="modal-card"
+        onClick={(event) => event.stopPropagation()}
+        onMouseDown={focusNearestFieldControl}
+      >
         <div className="panel-header">
           <div>
             <h2>{title}</h2>
             <p>{subtitle}</p>
           </div>
         </div>
-        {children}
+        <div className="modal-body">{children}</div>
         <div className="modal-footer">{footer}</div>
       </div>
     </div>
   )
+}
+
+function focusNearestFieldControl(event) {
+  if (event.target.closest('input, select, textarea, button, a')) {
+    return
+  }
+
+  const field = event.target.closest('.field')
+  const control = field?.querySelector('input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)')
+  if (control) {
+    control.focus()
+  }
 }
 
 export function CrudPanel({ entityKey, rows, onCreate, onEdit, onDelete, extraRowActions = () => [], panelProps }) {

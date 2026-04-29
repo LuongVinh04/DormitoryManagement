@@ -28,7 +28,7 @@ function buildDefaultUsername(student) {
 export function StudentsSection({ data, openCreate, openEdit, deleteEntity, getPanelProps, refreshData }) {
   const [filter, setFilter] = useState('all')
   const [accountStudent, setAccountStudent] = useState(null)
-  const [accountForm, setAccountForm] = useState({ username: '', password: '' })
+  const [accountForm, setAccountForm] = useState({ username: '', email: '', password: '', isActive: true })
   const [accountError, setAccountError] = useState('')
   const [accountNotice, setAccountNotice] = useState('')
   const [savingAccount, setSavingAccount] = useState(false)
@@ -40,14 +40,21 @@ export function StudentsSection({ data, openCreate, openEdit, deleteEntity, getP
 
   function openAccountModal(student) {
     setAccountStudent(student)
-    setAccountForm({ username: buildDefaultUsername(student), password: '' })
+    setAccountForm({
+      username: student.accountUsername || buildDefaultUsername(student),
+      email: student.accountEmail || student.email || '',
+      password: '',
+      isActive: student.accountIsActive ?? true,
+    })
     setAccountError('')
     setAccountNotice('')
   }
 
   async function createStudentAccount() {
-    if (!accountStudent || !accountForm.username || !accountForm.password) {
-      setAccountError('Vui lòng nhập tài khoản và mật khẩu cho sinh viên.')
+    if (!accountStudent || !accountForm.username || (!accountStudent.hasAccount && !accountForm.password)) {
+      setAccountError(accountStudent?.hasAccount
+        ? 'Vui lòng nhập tài khoản cho sinh viên.'
+        : 'Vui lòng nhập tài khoản và mật khẩu cho sinh viên.')
       return
     }
 
@@ -55,14 +62,14 @@ export function StudentsSection({ data, openCreate, openEdit, deleteEntity, getP
       setSavingAccount(true)
       setAccountError('')
       setAccountNotice('')
-      const response = await apiFetch('/api/auth/student-register', {
-        method: 'POST',
+      const response = await apiFetch(`/api/people/students/${accountStudent.id}/account`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentCode: accountStudent.studentCode,
-          email: accountStudent.email,
           username: accountForm.username,
+          email: accountForm.email,
           password: accountForm.password,
+          isActive: accountForm.isActive,
         }),
       })
 
@@ -70,7 +77,7 @@ export function StudentsSection({ data, openCreate, openEdit, deleteEntity, getP
         throw new Error(await readError(response))
       }
 
-      setAccountNotice(`Đã cấp tài khoản "${accountForm.username}" cho ${accountStudent.name}.`)
+      setAccountNotice(`Đã cập nhật tài khoản "${accountForm.username}" cho ${accountStudent.name}.`)
       setAccountForm((current) => ({ ...current, password: '' }))
       await refreshData?.()
     } catch (error) {
@@ -112,47 +119,51 @@ export function StudentsSection({ data, openCreate, openEdit, deleteEntity, getP
         onDelete={deleteEntity}
         panelProps={getPanelProps('students-students')}
         extraRowActions={(item) => [
-          !item.hasAccount
-            ? {
-                label: 'Cấp tài khoản',
-                kind: 'approve',
-                onClick: () => openAccountModal(item),
-              }
-            : null,
+          {
+            label: item.hasAccount ? 'Sửa/Cấp lại TK' : 'Cấp tài khoản',
+            kind: item.hasAccount ? 'default' : 'approve',
+            onClick: () => openAccountModal(item),
+          },
         ]}
       />
       <CrudPanel entityKey="contracts" rows={data.contracts} onCreate={openCreate} onEdit={openEdit} onDelete={deleteEntity} panelProps={getPanelProps('students-contracts')} />
 
       {accountStudent ? (
         <ModalCard
-          title="Cấp tài khoản sinh viên"
-          subtitle={`Tạo tài khoản đăng nhập cổng sinh viên cho ${accountStudent.name} (${accountStudent.studentCode}).`}
+          title={accountStudent.hasAccount ? 'Sửa/Cấp lại tài khoản sinh viên' : 'Cấp tài khoản sinh viên'}
+          subtitle={accountStudent.hasAccount
+            ? `Cập nhật tài khoản hoặc nhập mật khẩu mới để cấp lại quyền đăng nhập cho ${accountStudent.name} (${accountStudent.studentCode}).`
+            : `Tạo tài khoản đăng nhập cổng sinh viên cho ${accountStudent.name} (${accountStudent.studentCode}).`}
           onClose={() => setAccountStudent(null)}
           footer={(
             <>
               <button className="secondary-button" onClick={() => setAccountStudent(null)}>Đóng</button>
               <button className="primary-button" onClick={createStudentAccount} disabled={savingAccount}>
-                {savingAccount ? 'Đang cấp...' : 'Cấp tài khoản'}
+                {savingAccount ? 'Đang lưu...' : accountStudent.hasAccount ? 'Lưu/Cấp lại' : 'Cấp tài khoản'}
               </button>
             </>
           )}
         >
           <div className="form-grid">
-            <label className="field">
+            <div className="field">
               <span>Mã sinh viên</span>
               <input value={accountStudent.studentCode} disabled />
-            </label>
-            <label className="field">
-              <span>Email xác thực</span>
-              <input value={accountStudent.email || ''} disabled />
-            </label>
-            <label className="field">
+            </div>
+            <div className="field">
+              <span>Email tài khoản</span>
+              <input value={accountForm.email} onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))} />
+            </div>
+            <div className="field">
               <span>Tài khoản</span>
               <input value={accountForm.username} onChange={(event) => setAccountForm((current) => ({ ...current, username: event.target.value }))} />
-            </label>
-            <label className="field">
-              <span>Mật khẩu ban đầu</span>
-              <input type="password" value={accountForm.password} onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))} />
+            </div>
+            <div className="field">
+              <span>{accountStudent.hasAccount ? 'Mật khẩu mới (bỏ trống nếu không đổi)' : 'Mật khẩu ban đầu'}</span>
+              <input type="password" autoComplete="new-password" value={accountForm.password} onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))} />
+            </div>
+            <label className="checkbox-row field-wide">
+              <input type="checkbox" checked={accountForm.isActive} onChange={(event) => setAccountForm((current) => ({ ...current, isActive: event.target.checked }))} />
+              <span>Kích hoạt tài khoản sinh viên</span>
             </label>
           </div>
           {accountError ? <div className="feedback error modal-feedback">{accountError}</div> : null}

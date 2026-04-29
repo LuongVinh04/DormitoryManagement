@@ -2,7 +2,11 @@ import { ENTITY_CONFIGS } from '../constants'
 import { formatCurrencyInput, isCurrencyField, parseNumberInput } from '../helpers'
 
 export function EntityForm({ modal, lookups, updateModalField, errors = {} }) {
-  const fields = ENTITY_CONFIGS[modal.entityKey].fields.filter((field) => modal.mode === 'create' || !field.createOnly)
+  const fields = ENTITY_CONFIGS[modal.entityKey].fields.filter((field) => {
+    if (modal.mode === 'create' && field.editOnly) return false
+    if (modal.mode !== 'create' && field.createOnly) return false
+    return true
+  })
 
   return (
     <div className="form-grid">

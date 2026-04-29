@@ -338,14 +338,7 @@ public static class DatabaseSeeder
             await db.SaveChangesAsync();
         }
 
-        if (!await db.PaymentMethodCatalogs.AnyAsync())
-        {
-            db.PaymentMethodCatalogs.AddRange(
-                new PaymentMethodCatalog { Code = "Cash", Name = "Tiền mặt", Description = "Thu trực tiếp tại quầy tài chính.", CreatedAt = now },
-                new PaymentMethodCatalog { Code = "Transfer", Name = "Chuyển khoản", BankName = "Ngân hàng", Description = "Sinh viên chuyển khoản theo mã hóa đơn.", CreatedAt = now },
-                new PaymentMethodCatalog { Code = "POS", Name = "Quẹt thẻ/POS", ProcessingFee = 0, Description = "Thanh toán qua máy POS tại quầy.", CreatedAt = now });
-            await db.SaveChangesAsync();
-        }
+        await EnsureSupportedPaymentMethodsAsync(db, now);
 
         if (!await db.RoomZones.AnyAsync() && await db.Buildings.AnyAsync())
         {
@@ -410,6 +403,55 @@ public static class DatabaseSeeder
         if (rooms.Count > 0)
         {
             await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureSupportedPaymentMethodsAsync(AppDbContext db, DateTime now)
+    {
+        var methods = await db.PaymentMethodCatalogs.ToListAsync();
+
+        UpsertPaymentMethod(
+            methods,
+            "Cash",
+            "Tiền mặt",
+            "Thu trực tiếp tại quầy tài chính.",
+            now);
+
+        UpsertPaymentMethod(
+            methods,
+            "VNPAY",
+            "VNPay",
+            "Sinh viên thanh toán trực tuyến qua cổng VNPay sandbox.",
+            now);
+
+        foreach (var method in methods)
+        {
+            var isSupported = method.Code.Equals("Cash", StringComparison.OrdinalIgnoreCase) ||
+                method.Code.Equals("VNPAY", StringComparison.OrdinalIgnoreCase);
+            method.IsActive = isSupported;
+            method.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
+
+        void UpsertPaymentMethod(List<PaymentMethodCatalog> existingMethods, string code, string name, string description, DateTime createdAt)
+        {
+            var method = existingMethods.FirstOrDefault(x => x.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
+            if (method is null)
+            {
+                method = new PaymentMethodCatalog
+                {
+                    Code = code,
+                    CreatedAt = createdAt
+                };
+                db.PaymentMethodCatalogs.Add(method);
+                existingMethods.Add(method);
+            }
+
+            method.Name = name;
+            method.Description = description;
+            method.ProcessingFee = 0;
+            method.IsActive = true;
         }
     }
 
