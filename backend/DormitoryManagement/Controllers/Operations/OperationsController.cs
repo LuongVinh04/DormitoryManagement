@@ -987,17 +987,13 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         var share = await db.RoomFinanceStudentShares
             .Include(x => x.Invoice)
             .Include(x => x.Student)
+            .Include(x => x.RoomFinanceRecord)
             .FirstOrDefaultAsync(x => x.Id == shareId);
         if (share is null) return NotFound();
 
         if (share.Status == "Paid" || share.PaidAmount >= share.ExpectedAmount)
         {
             return BadRequest(new { message = "Khoản này đã được thanh toán." });
-        }
-
-        if (share.Invoice is null)
-        {
-            return BadRequest(new { message = "Phần chia này chưa có hóa đơn để thanh toán qua VNPay." });
         }
 
         if (!vnPayService.IsConfigured)
@@ -1013,13 +1009,14 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
 
         try
         {
-            var paymentUrl = vnPayService.CreatePaymentUrl(HttpContext, share.Invoice, amount, "/finance");
+            var invoice = await EnsureInvoiceForShareAsync(share);
+            var paymentUrl = vnPayService.CreatePaymentUrl(HttpContext, invoice, amount, "/finance");
             return Ok(new
             {
                 paymentMethod = "VNPAY",
                 shareId = share.Id,
-                invoiceId = share.Invoice.Id,
-                share.Invoice.InvoiceCode,
+                invoiceId = invoice.Id,
+                invoice.InvoiceCode,
                 studentName = share.Student?.Name,
                 amount,
                 paymentUrl
@@ -1029,6 +1026,61 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         {
             return BadRequest(new { message = error.Message });
         }
+    }
+
+    private async Task<Invoices> EnsureInvoiceForShareAsync(RoomFinanceStudentShare share)
+    {
+        if (share.Invoice is not null)
+        {
+            return share.Invoice;
+        }
+
+        if (share.InvoiceId.HasValue)
+        {
+            var linkedInvoice = await db.Invoices.FirstOrDefaultAsync(x => x.Id == share.InvoiceId.Value);
+            if (linkedInvoice is not null)
+            {
+                share.Invoice = linkedInvoice;
+                return linkedInvoice;
+            }
+        }
+
+        var record = share.RoomFinanceRecord ??
+            await db.RoomFinanceRecords.FirstOrDefaultAsync(x => x.Id == share.RoomFinanceRecordId);
+        var student = share.Student ??
+            await db.Students.FirstOrDefaultAsync(x => x.Id == share.StudentId);
+
+        if (record is null || student is null)
+        {
+            throw new InvalidOperationException("Không đủ dữ liệu để tạo hóa đơn cho phần chia này.");
+        }
+
+        var total = Math.Round(share.ExpectedAmount, 0);
+        var invoice = new Invoices
+        {
+            InvoiceCode = $"INV-{record.BillingMonth:yyyyMM}-{student.StudentCode}-{share.Id}",
+            StudentId = student.Id,
+            RoomId = record.RoomId,
+            UtilityId = record.UtilityId,
+            RoomFee = total,
+            ElectricityFee = 0,
+            WaterFee = 0,
+            ServiceFee = 0,
+            Total = total,
+            Status = "Unpaid",
+            BillingMonth = record.BillingMonth,
+            DueDate = record.DueDate
+        };
+
+        db.Invoices.Add(invoice);
+        await db.SaveChangesAsync();
+
+        share.InvoiceId = invoice.Id;
+        share.Invoice = invoice;
+        share.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return invoice;
     }
 
     private static string? NormalizePaymentMethod(string? value)

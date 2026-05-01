@@ -228,7 +228,7 @@ export function StudentPortalSection() {
       setPaymentNotice('Đã tạo link thanh toán VNPay. Vui lòng mở cổng thanh toán để hoàn tất giao dịch.')
       setPaymentDialog({
         url: data.paymentUrl,
-        share,
+        share: { ...share, invoiceId: data.invoiceId, invoiceCode: data.invoiceCode ?? share.invoiceCode },
         amount: data.amount ?? share.remainingAmount,
         invoiceCode: data.invoiceCode ?? share.invoiceCode,
       })
@@ -261,8 +261,8 @@ export function StudentPortalSection() {
   const student = profile?.student
 
   return (
-    <div className="app-shell" style={{ display: 'block' }}>
-      <div className="student-portal">
+    <div className="student-portal-page">
+      <div className="student-portal-shell">
         <header className="student-portal-header">
           <div>
             <h1>Cổng Sinh Viên</h1>
@@ -274,10 +274,10 @@ export function StudentPortalSection() {
           </div>
         </header>
 
-        {error ? <div className="feedback error" style={{ margin: '0 auto 16px', maxWidth: 1100 }}>{error}</div> : null}
-        {notice ? <div className="feedback success" style={{ margin: '0 auto 16px', maxWidth: 1100 }}>{notice}</div> : null}
+        {error ? <div className="feedback error">{error}</div> : null}
+        {notice ? <div className="feedback success">{notice}</div> : null}
 
-        <div className="student-portal-grid">
+        <div className="student-portal-grid student-portal-overview-grid">
           <section className="student-portal-card">
             <div className="student-portal-card-header">
               <h2>Thông tin cá nhân</h2>
@@ -326,6 +326,7 @@ export function StudentPortalSection() {
                 {room.roommates?.length > 0 ? (
                   <div style={{ marginTop: 12 }}>
                     <h3>Bạn cùng phòng</h3>
+                    <div className="student-table-wrap">
                     <table>
                       <thead>
                         <tr><th>Mã SV</th><th>Họ tên</th><th>Khoa</th><th>SĐT</th></tr>
@@ -341,6 +342,7 @@ export function StudentPortalSection() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 ) : null}
               </>
@@ -370,6 +372,7 @@ export function StudentPortalSection() {
               </div>
             ) : null}
             {finance?.shares?.length > 0 ? (
+              <div className="student-table-wrap">
               <table>
                 <thead>
                   <tr>
@@ -420,6 +423,7 @@ export function StudentPortalSection() {
                   ))}
                 </tbody>
               </table>
+              </div>
             ) : (
               <p style={{ padding: '1rem', color: '#64748b' }}>Chưa có công nợ tài chính.</p>
             )}
@@ -427,6 +431,7 @@ export function StudentPortalSection() {
             {finance?.roommateShares?.length > 0 ? (
               <div className="roommate-finance-block">
                 <h3>Trạng thái đóng phí các thành viên trong phòng</h3>
+                <div className="student-table-wrap">
                 <table>
                   <thead>
                     <tr><th>Kỳ</th><th>Sinh viên</th><th>Phải nộp</th><th>Đã nộp</th><th>Còn lại</th><th>Trạng thái</th></tr>
@@ -448,10 +453,12 @@ export function StudentPortalSection() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             ) : null}
           </section>
 
+          <div className="student-portal-action-grid">
           <section className="student-portal-card">
             <h2>Yêu cầu chuyển phòng</h2>
             {room?.room ? (
@@ -471,6 +478,7 @@ export function StudentPortalSection() {
             {transfers.length > 0 ? (
               <div style={{ marginTop: 16 }}>
                 <h3>Lịch sử yêu cầu</h3>
+                <div className="student-table-wrap">
                 <table>
                   <thead>
                     <tr><th>Phòng hiện tại</th><th>Phòng muốn</th><th>Lý do</th><th>Trạng thái</th><th>Ghi chú</th></tr>
@@ -491,6 +499,7 @@ export function StudentPortalSection() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             ) : null}
           </section>
@@ -525,6 +534,7 @@ export function StudentPortalSection() {
               </div>
             ) : null}
           </section>
+          </div>
         </div>
       </div>
       {paymentDialog ? (
@@ -536,7 +546,7 @@ export function StudentPortalSection() {
               <img src="/vnpay-logo.svg" alt="VNPay" />
               <div>
                 <h2 id="vnpay-student-title">Thanh toán qua VNPay</h2>
-                <p>VNPay sandbox chặn nhúng trong iframe. Hệ thống sẽ mở cổng thanh toán trong tab mới giống luồng WebView riêng của app mẫu.</p>
+                <p>Kiểm tra thông tin khoản thu trước khi mở cổng thanh toán VNPay.</p>
               </div>
             </div>
             <div className="vnpay-payment-summary">

@@ -1,0 +1,47 @@
+
+/* STUDENT PORTAL LAYOUT REFACTOR */
+.student-portal-page {
+  background: var(--gray-50);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.student-portal-shell {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+}
+
+.student-portal-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.student-portal-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.student-portal-action-grid > .finance-card {
+  grid-column: 1 / -1;
+}
+
+.student-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1024px) {
+  .student-portal-overview-grid,
+  .student-portal-action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
