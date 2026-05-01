@@ -1,0 +1,6 @@
+@DormitoryManagement_HostAddress = http://localhost:5105
+
+GET {{DormitoryManagement_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

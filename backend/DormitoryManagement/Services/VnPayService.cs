@@ -10,6 +10,7 @@ public class VnPayService(IConfiguration configuration)
 {
     private const string Version = "2.1.0";
     private const string DefaultPaymentUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    private const string DefaultClientPath = "/";
 
     public bool IsConfigured
     {
@@ -21,7 +22,7 @@ public class VnPayService(IConfiguration configuration)
         }
     }
 
-    public string CreatePaymentUrl(HttpContext httpContext, Invoices invoice, decimal amount)
+    public string CreatePaymentUrl(HttpContext httpContext, Invoices invoice, decimal amount, string clientPath)
     {
         if (!IsConfigured)
         {
@@ -33,8 +34,8 @@ public class VnPayService(IConfiguration configuration)
             throw new InvalidOperationException("Số tiền thanh toán phải lớn hơn 0.");
         }
 
-        var now = DateTime.Now;
-        var txnRef = $"I{invoice.Id}T{now:yyyyMMddHHmmssfff}";
+        var now = GetVietnamTimeNow();
+        var txnRef = $"{invoice.Id:D8}{now:yyyyMMddHHmmssfff}";
         var returnUrl = configuration["VNPay:ReturnUrl"];
         if (string.IsNullOrWhiteSpace(returnUrl))
         {
@@ -53,15 +54,16 @@ public class VnPayService(IConfiguration configuration)
             ["vnp_IpAddr"] = GetIpAddress(httpContext),
             ["vnp_Locale"] = "vn",
             ["vnp_OrderInfo"] = $"Thanh toan hoa don ky tuc xa {invoice.Id}",
-            ["vnp_OrderType"] = "billpayment",
+            ["vnp_OrderType"] = "other",
             ["vnp_ReturnUrl"] = returnUrl,
             ["vnp_TxnRef"] = txnRef
         };
 
-        var hashData = BuildQuery(parameters);
+        var hashData = BuildHashData(parameters);
         var secureHash = HmacSha512(configuration["VNPay:HashSecret"]!, hashData);
         var paymentUrl = configuration["VNPay:PaymentUrl"] ?? DefaultPaymentUrl;
-        return $"{paymentUrl}?{hashData}&vnp_SecureHash={secureHash}";
+        var query = BuildQueryString(parameters);
+        return $"{paymentUrl}?{query}&vnp_SecureHash={secureHash}";
     }
 
     public bool ValidateReturn(IQueryCollection query)
@@ -80,19 +82,21 @@ public class VnPayService(IConfiguration configuration)
         var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var item in query)
         {
-            if (item.Key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) ||
+            if (!item.Key.StartsWith("vnp_", StringComparison.OrdinalIgnoreCase) ||
+                item.Key.Equals("vnp_SecureHash", StringComparison.OrdinalIgnoreCase) ||
                 item.Key.Equals("vnp_SecureHashType", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            if (!string.IsNullOrWhiteSpace(item.Value.ToString()))
+            var value = item.Value.ToString();
+            if (!string.IsNullOrWhiteSpace(value))
             {
-                parameters[item.Key] = item.Value.ToString();
+                parameters[item.Key] = value;
             }
         }
 
-        var computedHash = HmacSha512(configuration["VNPay:HashSecret"]!, BuildQuery(parameters));
+        var computedHash = HmacSha512(configuration["VNPay:HashSecret"]!, BuildHashData(parameters));
         return string.Equals(computedHash, receivedHash, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -104,6 +108,13 @@ public class VnPayService(IConfiguration configuration)
         }
 
         var normalized = txnRef.Trim();
+        if (normalized.Length >= 8 &&
+            normalized.Take(8).All(char.IsDigit) &&
+            int.TryParse(normalized[..8], NumberStyles.Integer, CultureInfo.InvariantCulture, out var paddedInvoiceId))
+        {
+            return paddedInvoiceId;
+        }
+
         if (normalized.StartsWith("I", StringComparison.OrdinalIgnoreCase))
         {
             var endIndex = normalized.IndexOf('T', StringComparison.OrdinalIgnoreCase);
@@ -129,14 +140,31 @@ public class VnPayService(IConfiguration configuration)
             : 0;
     }
 
-    public string BuildClientReturnUrl(bool success, int? invoiceId, string message)
+    public string GetClientPath(IQueryCollection query)
     {
-        var baseUrl = configuration["VNPay:ClientReturnUrl"] ?? "/";
+        return NormalizeClientPath(query["clientPath"].ToString());
+    }
+
+    public string BuildClientReturnUrl(bool success, int? invoiceId, string message, string? clientPath)
+    {
+        var baseUrl = NormalizeClientPath(clientPath);
         var separator = baseUrl.Contains('?') ? "&" : "?";
         return $"{baseUrl}{separator}paymentStatus={(success ? "success" : "failed")}&invoiceId={invoiceId}&message={WebUtility.UrlEncode(message)}";
     }
 
-    private static string BuildQuery(SortedDictionary<string, string> parameters)
+    public string BuildClientReturnUrl(bool success, int? invoiceId, string message)
+    {
+        var configuredPath = configuration["VNPay:ClientReturnUrl"];
+        return BuildClientReturnUrl(success, invoiceId, message, configuredPath);
+    }
+
+    private static string BuildHashData(SortedDictionary<string, string> parameters)
+    {
+        return string.Join("&", parameters.Select(item =>
+            $"{WebUtility.UrlEncode(item.Key)}={WebUtility.UrlEncode(item.Value)}"));
+    }
+
+    private static string BuildQueryString(SortedDictionary<string, string> parameters)
     {
         return string.Join("&", parameters.Select(item =>
             $"{WebUtility.UrlEncode(item.Key)}={WebUtility.UrlEncode(item.Value)}"));
@@ -156,10 +184,57 @@ public class VnPayService(IConfiguration configuration)
         var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(forwardedFor))
         {
-            return forwardedFor.Split(',')[0].Trim();
+            return NormalizeIpAddress(forwardedFor.Split(',')[0].Trim());
         }
 
-        return context.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+        return NormalizeIpAddress(context.Connection.RemoteIpAddress?.ToString());
+    }
+
+    private static string NormalizeIpAddress(string? ipAddress)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress))
+        {
+            return "127.0.0.1";
+        }
+
+        var ip = ipAddress.Trim();
+
+        if (IPAddress.TryParse(ip, out var parsedIp))
+        {
+            if (IPAddress.IsLoopback(parsedIp))
+            {
+                return "127.0.0.1";
+            }
+
+            if (parsedIp.IsIPv4MappedToIPv6)
+            {
+                return parsedIp.MapToIPv4().ToString();
+            }
+        }
+
+        return ip;
+    }
+
+    private static DateTime GetVietnamTimeNow()
+    {
+        foreach (var timeZoneId in new[] { "SE Asia Standard Time", "Asia/Ho_Chi_Minh" })
+        {
+            try
+            {
+                var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Thử timezone ID kế tiếp để tương thích Windows/Linux.
+            }
+            catch (InvalidTimeZoneException)
+            {
+                // Thử timezone ID kế tiếp để tương thích Windows/Linux.
+            }
+        }
+
+        return DateTime.UtcNow.AddHours(7);
     }
 
     private static bool IsRealValue(string? value)
@@ -168,4 +243,28 @@ public class VnPayService(IConfiguration configuration)
             !value.StartsWith("YOUR_", StringComparison.OrdinalIgnoreCase) &&
             !value.StartsWith("CHANGE_ME", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static string NormalizeClientPath(string? clientPath)
+    {
+        if (string.IsNullOrWhiteSpace(clientPath))
+        {
+            return DefaultClientPath;
+        }
+
+        var normalized = clientPath.Trim();
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out var absoluteUri))
+        {
+            normalized = string.IsNullOrWhiteSpace(absoluteUri.PathAndQuery)
+                ? DefaultClientPath
+                : absoluteUri.PathAndQuery;
+        }
+
+        if (!normalized.StartsWith('/'))
+        {
+            return DefaultClientPath;
+        }
+
+        return normalized.StartsWith("//", StringComparison.Ordinal) ? DefaultClientPath : normalized;
+    }
+
 }

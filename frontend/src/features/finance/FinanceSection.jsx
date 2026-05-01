@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { CrudPanel, Panel } from '../../components'
 import { apiFetch, currencyFormat, numberFormat, readError, shortDate } from '../../helpers'
 
@@ -235,7 +235,7 @@ export function FinanceSection({
             invoiceCode: data.invoiceCode ?? current.share.invoiceCode,
           }
         : current)
-      setShareNotice('Đã tạo link thanh toán VNPay. Vui lòng hoàn tất giao dịch trong cửa sổ thanh toán.')
+      setShareNotice('Đã tạo link thanh toán VNPay. Vui lòng mở cổng thanh toán để hoàn tất giao dịch.')
       setVnPayLoading(false)
     } catch (error) {
       setShareError(error.message)
@@ -526,12 +526,12 @@ export function FinanceSection({
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget && !vnPayLoading) setVnPayDialog(null)
         }}>
-          <div className="modal-card vnpay-payment-modal vnpay-frame-modal" role="dialog" aria-modal="true" aria-labelledby="vnpay-admin-title">
+          <div className="modal-card vnpay-payment-modal" role="dialog" aria-modal="true" aria-labelledby="vnpay-admin-title">
             <div className="vnpay-payment-header">
               <img src="/vnpay-logo.svg" alt="VNPay" />
               <div>
                 <h2 id="vnpay-admin-title">Thanh toán qua VNPay</h2>
-                <p>Hoàn tất thanh toán trong khung bên dưới. Nếu ngân hàng hoặc VNPay chặn nhúng, hãy dùng nút mở tab mới.</p>
+                <p>VNPay sandbox chặn nhúng trong iframe. Hệ thống sẽ mở cổng thanh toán trong tab mới giống luồng WebView riêng của app mẫu.</p>
               </div>
             </div>
             <div className="vnpay-payment-summary">
@@ -548,25 +548,15 @@ export function FinanceSection({
                 <strong>{currencyFormat.format(vnPayDialog.share.remainingAmount || vnPayDialog.amount || 0)}</strong>
               </div>
             </div>
-            {vnPayDialog.paymentUrl ? (
-              <div className="vnpay-frame-shell">
-                <iframe
-                  className="vnpay-frame"
-                  title="Cổng thanh toán VNPay"
-                  src={vnPayDialog.paymentUrl}
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
-            ) : null}
             <div className="modal-footer">
               <button className="secondary-button" onClick={() => setVnPayDialog(null)} disabled={vnPayLoading}>Đóng</button>
               {vnPayDialog.paymentUrl ? (
-                <button className="ghost-button" type="button" onClick={() => window.open(vnPayDialog.paymentUrl, '_blank', 'noopener,noreferrer')}>
-                  Mở tab mới
+                <button className="primary-button" type="button" onClick={() => window.open(vnPayDialog.paymentUrl, '_blank', 'noopener,noreferrer')}>
+                  Mở cổng VNPay
                 </button>
               ) : null}
               {vnPayDialog.paymentUrl ? (
-                <button className="primary-button" type="button" onClick={() => refreshData?.()}>
+                <button className="ghost-button" type="button" onClick={() => refreshData?.()}>
                   Làm mới trạng thái
                 </button>
               ) : (

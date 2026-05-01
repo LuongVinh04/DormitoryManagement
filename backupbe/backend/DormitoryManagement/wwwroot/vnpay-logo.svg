@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="72" viewBox="0 0 220 72" role="img" aria-labelledby="title desc">
+  <title id="title">VNPay</title>
+  <desc id="desc">Logo VNPay dùng cho nút thanh toán trong cổng sinh viên.</desc>
+  <rect width="220" height="72" rx="16" fill="#fff"/>
+  <g transform="translate(12 10)">
+    <rect x="0" y="16" width="34" height="34" rx="7" transform="rotate(-45 17 33)" fill="#0b5dac"/>
+    <rect x="22" y="16" width="34" height="34" rx="7" transform="rotate(-45 39 33)" fill="#ed1c24"/>
+    <path d="M18 23c7-7 18-7 25 0" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/>
+    <path d="M21 28c5-5 14-5 19 0" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M25 33c3-3 8-3 11 0" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+  <text x="76" y="42" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="800" letter-spacing="-1">
+    <tspan fill="#ed1c24">VN</tspan><tspan fill="#0b5dac">PAY</tspan>
+  </text>
+  <text x="78" y="56" font-family="Arial, Helvetica, sans-serif" font-size="9" fill="#0b5dac">Cho cuộc sống đơn giản hơn</text>
+</svg>
