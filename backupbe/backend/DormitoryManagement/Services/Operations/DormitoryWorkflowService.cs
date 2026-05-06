@@ -1,5 +1,6 @@
 ﻿using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
+using Dormitory.Models.Enum;
 using DormitoryManagement.Services.Facilities;
 using Microsoft.EntityFrameworkCore;
 
@@ -72,33 +73,52 @@ public static class DormitoryWorkflowService
             return (false, validation.Message, student, room);
         }
 
-        var previousRoomId = student.RoomId;
-        student.RoomId = roomId;
-        student.Status = status;
-        student.UpdatedAt = DateTime.UtcNow;
+        //lấy phòng hiện tại
+        var currentAssignment = await db.RoomAssignments
+            .FirstOrDefaultAsync(x => x.StudentId == studentId && x.Status == RoomAssignmentStatus.Active);
 
-        if (previousRoomId.HasValue && previousRoomId.Value != roomId)
+        //không cho gán lại cùng phòng
+        if (currentAssignment != null && currentAssignment.RoomId == roomId)
         {
-            await RoomOccupancyService.RecalculateRoomAsync(db, previousRoomId.Value);
+            return (false, "Sinh viên đã ở trong phòng này", student, room);
         }
 
-        await RoomOccupancyService.RecalculateRoomAsync(db, roomId);
+        //nếu có phòng cũ đóng lại
+        if (currentAssignment != null)
+        {
+            currentAssignment.Status = RoomAssignmentStatus.Moved;
+            currentAssignment.ToDate = DateTime.UtcNow;
 
+            await RoomOccupancyService.RecalculateRoomAsync(db, currentAssignment.RoomId);
+        }
+
+        //tạo điều phối phòng mới
+        var newAssignment = new RoomAssignment
+        {
+            StudentId = studentId,
+            RoomId = roomId,
+            FromDate = DateTime.UtcNow,
+            Status = RoomAssignmentStatus.Active
+        };
+
+        //cập nhật phòng mới
+        await RoomOccupancyService.RecalculateRoomAsync (db, roomId);
+
+        //note
         if (!string.IsNullOrWhiteSpace(note))
         {
             var registration = await db.Registrations
                 .Where(x => x.StudentId == studentId && x.RoomId == roomId)
                 .OrderByDescending(x => x.CreatedAt)
                 .FirstOrDefaultAsync();
-
-            if (registration is not null)
+            if (registration != null)
             {
                 registration.Note = note.Trim();
                 registration.UpdatedAt = DateTime.UtcNow;
             }
         }
-
         return (true, null, student, room);
+        
     }
 
     public static async Task<(bool Success, string? Message)> TransferStudentAsync(
@@ -179,7 +199,7 @@ public static class DormitoryWorkflowService
         var room = await db.Rooms.FirstAsync(x => x.Id == registration.RoomId);
         var contractExists = await db.Contracts.AnyAsync(x =>
             x.StudentId == registration.StudentId &&
-            x.RoomId == registration.RoomId &&
+            //x.RoomId == registration.RoomId &&
             x.Status == "Active" &&
             x.EndDate >= decisionDate.Date);
 
@@ -189,7 +209,7 @@ public static class DormitoryWorkflowService
             {
                 ContractCode = $"HD-{DateTime.Today:yyyyMMdd}-{registration.StudentId:D3}",
                 StudentId = registration.StudentId,
-                RoomId = registration.RoomId,
+                //RoomId = registration.RoomId,
                 DepositAmount = room.PricePerMonth,
                 MonthlyFee = room.PricePerMonth,
                 StartDate = decisionDate.Date,
@@ -473,7 +493,7 @@ public static class DormitoryWorkflowService
 
         var hasValidContract = await db.Contracts.AnyAsync(x =>
             x.StudentId == student.Id &&
-            x.RoomId == room.Id &&
+            //x.RoomId == room.Id &&
             x.Status == "Active" &&
             x.StartDate < tomorrow &&
             x.EndDate >= today);

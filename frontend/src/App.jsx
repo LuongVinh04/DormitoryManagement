@@ -1,47 +1,62 @@
-import { Component, lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import './App.css'
-import { MetricCard, ModalCard, SectionBanner, SummaryBlock } from './components'
-import { NAVIGATION, ENTITY_CONFIGS } from './constants'
-import { EntityForm } from './forms/EntityForm'
-import { StatusToast } from './components/StatusToast'
-import { useDashboardViewModel } from './hooks/useDashboardViewModel'
-import { useDormitoryData } from './hooks/useDormitoryData'
-import { usePanelLayouts } from './hooks/usePanelLayouts'
-import { useSidebarLayout } from './hooks/useSidebarLayout'
-import { useAuth } from './hooks/useAuth'
-import { LoginSection } from './features/auth/LoginSection'
-import { currencyFormat, numberFormat } from './helpers'
+import { Component, lazy, Suspense, useEffect } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import "./App.css";
+import {
+  MetricCard,
+  ModalCard,
+  SectionBanner,
+  SummaryBlock,
+} from "./components";
+import { NAVIGATION, ENTITY_CONFIGS } from "./constants";
+import { EntityForm } from "./forms/EntityForm";
+import { StatusToast } from "./components/StatusToast";
+import { useDashboardViewModel } from "./hooks/useDashboardViewModel";
+import { useDormitoryData } from "./hooks/useDormitoryData";
+import { usePanelLayouts } from "./hooks/usePanelLayouts";
+import { useSidebarLayout } from "./hooks/useSidebarLayout";
+import { useAuth } from "./hooks/useAuth";
+import { LoginSection } from "./features/auth/LoginSection";
+import { currencyFormat, numberFormat } from "./helpers";
 
 function lazyWithRetry(importer) {
   return lazy(async () => {
     try {
-      return await importer()
+      return await importer();
     } catch (error) {
-      const alreadyRetried = sessionStorage.getItem('dormitory_lazy_retry') === '1'
-      const isChunkError = /Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(String(error?.message ?? error))
+      const alreadyRetried =
+        sessionStorage.getItem("dormitory_lazy_retry") === "1";
+      const isChunkError =
+        /Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(
+          String(error?.message ?? error),
+        );
       if (isChunkError && !alreadyRetried) {
-        sessionStorage.setItem('dormitory_lazy_retry', '1')
-        window.location.reload()
+        sessionStorage.setItem("dormitory_lazy_retry", "1");
+        window.location.reload();
       }
-      throw error
+      throw error;
     }
-  })
+  });
 }
 
 class RouteErrorBoundary extends Component {
   constructor(props) {
-    super(props)
-    this.state = { hasError: false }
+    super(props);
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError() {
-    return { hasError: true }
+    return { hasError: true };
   }
 
   componentDidUpdate(previousProps) {
     if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false })
+      this.setState({ hasError: false });
     }
   }
 
@@ -50,85 +65,165 @@ class RouteErrorBoundary extends Component {
       return (
         <div className="route-error-card">
           <strong>Không thể mở phân hệ.</strong>
-          <p>Trình duyệt có thể đang giữ phiên bản tệp giao diện cũ. Hãy tải lại trang để đồng bộ lại.</p>
-          <button className="primary-button" onClick={() => window.location.reload()}>Tải lại trang</button>
+          <p>
+            Trình duyệt có thể đang giữ phiên bản tệp giao diện cũ. Hãy tải lại
+            trang để đồng bộ lại.
+          </p>
+          <button
+            className="primary-button"
+            onClick={() => window.location.reload()}
+          >
+            Tải lại trang
+          </button>
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
 
-const AdminSection = lazyWithRetry(() => import('./features/admin/AdminSection').then((module) => ({ default: module.AdminSection })))
-const CatalogSection = lazyWithRetry(() => import('./features/catalog/CatalogSection').then((module) => ({ default: module.CatalogSection })))
-const FacilitiesSection = lazyWithRetry(() => import('./features/facilities/FacilitiesSection').then((module) => ({ default: module.FacilitiesSection })))
-const FinanceSection = lazyWithRetry(() => import('./features/finance/FinanceSection').then((module) => ({ default: module.FinanceSection })))
-const OperationsSection = lazyWithRetry(() => import('./features/operations/OperationsSection').then((module) => ({ default: module.OperationsSection })))
-const OverviewSection = lazyWithRetry(() => import('./features/overview/OverviewSection').then((module) => ({ default: module.OverviewSection })))
-const StudentsSection = lazyWithRetry(() => import('./features/students/StudentsSection').then((module) => ({ default: module.StudentsSection })))
-const StudentPortalSection = lazyWithRetry(() => import('./features/student-portal/StudentPortalSection').then((module) => ({ default: module.StudentPortalSection })))
+const AdminSection = lazyWithRetry(() =>
+  import("./features/admin/AdminSection").then((module) => ({
+    default: module.AdminSection,
+  })),
+);
+const CatalogSection = lazyWithRetry(() =>
+  import("./features/catalog/CatalogSection").then((module) => ({
+    default: module.CatalogSection,
+  })),
+);
+const FacilitiesSection = lazyWithRetry(() =>
+  import("./features/facilities/FacilitiesSection").then((module) => ({
+    default: module.FacilitiesSection,
+  })),
+);
+const FinanceSection = lazyWithRetry(() =>
+  import("./features/finance/FinanceSection").then((module) => ({
+    default: module.FinanceSection,
+  })),
+);
+const OperationsSection = lazyWithRetry(() =>
+  import("./features/operations/OperationsSection").then((module) => ({
+    default: module.OperationsSection,
+  })),
+);
+const OverviewSection = lazyWithRetry(() =>
+  import("./features/overview/OverviewSection").then((module) => ({
+    default: module.OverviewSection,
+  })),
+);
+const StudentsSection = lazyWithRetry(() =>
+  import("./features/students/StudentsSection").then((module) => ({
+    default: module.StudentsSection,
+  })),
+);
+const StudentPortalSection = lazyWithRetry(() =>
+  import("./features/student-portal/StudentPortalSection").then((module) => ({
+    default: module.StudentPortalSection,
+  })),
+);
 
 function App() {
-  const { user, loading: authLoading, logout, hasPermission, hasAnyPermission } = useAuth()
+  const {
+    user,
+    loading: authLoading,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+  } = useAuth();
   const {
     isSidebarCollapsed,
     isSidebarSummaryCollapsed,
     isSidebarNavCollapsed,
     toggleSidebarCollapse,
     toggleSidebarSummary,
-    toggleSidebarNav
-  } = useSidebarLayout()
-  const location = useLocation()
-  const navigate = useNavigate()
+    toggleSidebarNav,
+  } = useSidebarLayout();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    sessionStorage.removeItem('dormitory_lazy_retry')
-  }, [])
+    sessionStorage.removeItem("dormitory_lazy_retry");
+  }, []);
 
   useEffect(() => {
     function focusFieldFromAnySafePoint(event) {
-      if (event.button !== undefined && event.button !== 0) return
-      const target = event.target
-      if (!(target instanceof Element)) return
+      if (event.button !== undefined && event.button !== 0) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
 
-      if (target.closest('input, select, textarea, button, a, [role="button"]')) {
-        return
+      if (
+        target.closest('input, select, textarea, button, a, [role="button"]')
+      ) {
+        return;
       }
 
-      const field = target.closest('.field, .form-group, .student-portal-edit-form label, .message-composer label')
-      const control = field?.querySelector('input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)')
-      if (!control) return
+      const field = target.closest(
+        ".field, .form-group, .student-portal-edit-form label, .message-composer label",
+      );
+      const control = field?.querySelector(
+        'input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)',
+      );
+      if (!control) return;
 
       window.requestAnimationFrame(() => {
-        control.focus({ preventScroll: true })
-        if (control instanceof HTMLInputElement && ['text', 'email', 'password', 'search', 'tel', 'url', ''].includes(control.type)) {
-          const end = control.value.length
-          control.setSelectionRange(end, end)
+        control.focus({ preventScroll: true });
+        if (
+          control instanceof HTMLInputElement &&
+          ["text", "email", "password", "search", "tel", "url", ""].includes(
+            control.type,
+          )
+        ) {
+          const end = control.value.length;
+          control.setSelectionRange(end, end);
         }
-      })
+      });
     }
 
-    document.addEventListener('pointerdown', focusFieldFromAnySafePoint, true)
-    return () => document.removeEventListener('pointerdown', focusFieldFromAnySafePoint, true)
-  }, [])
+    document.addEventListener("pointerdown", focusFieldFromAnySafePoint, true);
+    return () =>
+      document.removeEventListener(
+        "pointerdown",
+        focusFieldFromAnySafePoint,
+        true,
+      );
+  }, []);
 
   const allowedNavs = NAVIGATION.filter((item) => {
     switch (item.key) {
-      case 'overview': return hasPermission('dashboard.view')
-      case 'catalog': return true
-      case 'operations': return hasAnyPermission(['registrations.view', 'room.assign'])
-      case 'facilities': return hasAnyPermission(['buildings.view', 'rooms.view'])
-      case 'students': return hasPermission('students.view')
-      case 'finance': return hasAnyPermission(['roomFinance.view', 'invoices.view', 'utilities.view'])
-      case 'admin': return hasAnyPermission(['users.view', 'roles.view', 'permissions.manage'])
-      default: return true
+      case "overview":
+        return hasPermission("dashboard.view");
+      case "catalog":
+        return true;
+      case "operations":
+        return hasAnyPermission(["registrations.view", "room.assign"]);
+      case "facilities":
+        return hasAnyPermission(["buildings.view", "rooms.view"]);
+      case "students":
+        return hasPermission("students.view");
+      case "finance":
+        return hasAnyPermission([
+          "roomFinance.view",
+          "invoices.view",
+          "utilities.view",
+        ]);
+      case "admin":
+        return hasAnyPermission([
+          "users.view",
+          "roles.view",
+          "permissions.manage",
+        ]);
+      default:
+        return true;
     }
-  })
+  });
 
-  const activeRoute = allowedNavs.find((item) => item.path === location.pathname) ?? allowedNavs[0]
-  const section = activeRoute?.key ?? 'overview'
-  const { getPanelProps, expandPanel } = usePanelLayouts()
+  const activeRoute =
+    allowedNavs.find((item) => item.path === location.pathname) ??
+    allowedNavs[0];
+  const section = activeRoute?.key ?? "overview";
+  const { getPanelProps, expandPanel } = usePanelLayouts();
   const {
     activeRoomId,
     confirmDelete,
@@ -156,32 +251,38 @@ function App() {
     setRoomActions,
     setSelectedRoomId,
     updateModalField,
-  } = useDormitoryData()
+  } = useDormitoryData();
   const {
     activeNavigation,
     safeFocusCards,
     safeSectionStats,
     sectionBannerContent,
     waitingStudents,
-  } = useDashboardViewModel({ dashboard, data, financeSummary, section })
+  } = useDashboardViewModel({ dashboard, data, financeSummary, section });
 
   const handleFocusCardClick = (item) => {
     if (item.route) {
       if (location.pathname !== item.route) {
-        navigate(item.route)
+        navigate(item.route);
       }
       setTimeout(() => {
-        if (item.panelKey) expandPanel(item.panelKey)
+        if (item.panelKey) expandPanel(item.panelKey);
         if (item.panelId) {
-          const el = document.getElementById(item.panelId)
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          const el = document.getElementById(item.panelId);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-      }, 50)
+      }, 50);
     }
-  }
+  };
 
   if (authLoading) {
-    return <div className="loading-screen"><div className="loading-card"><h1>Đang kiểm tra phiên làm việc...</h1></div></div>
+    return (
+      <div className="loading-screen">
+        <div className="loading-card">
+          <h1>Đang kiểm tra phiên làm việc...</h1>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -190,88 +291,197 @@ function App() {
         <Route path="/login" element={<LoginSection />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    )
+    );
   }
 
   // Student portal route
   if (user.studentId) {
     return (
       <RouteErrorBoundary resetKey="student-portal">
-        <Suspense fallback={<div className="loading-screen"><div className="loading-card"><h1>Đang tải cổng sinh viên...</h1></div></div>}>
+        <Suspense
+          fallback={
+            <div className="loading-screen">
+              <div className="loading-card">
+                <h1>Đang tải cổng sinh viên...</h1>
+              </div>
+            </div>
+          }
+        >
           <StudentPortalSection />
         </Suspense>
       </RouteErrorBoundary>
-    )
+    );
   }
 
   if (loading || !dashboard) {
     return (
       <div className="loading-screen">
         <div className="loading-card">
-          <img src="/dormitory-hub-logo.svg" alt="Dormitory Hub" className="loading-brand-logo" />
+          <img
+            src="/dormitory-hub-logo.svg"
+            alt="Dormitory Hub"
+            className="loading-brand-logo"
+          />
           <span className="badge">Dormitory Hub</span>
           <h1>Đang tải trung tâm vận hành ký túc xá</h1>
           <p>Hệ thống đang tổng hợp dữ liệu vận hành, lưu trú và tài chính.</p>
         </div>
       </div>
-    )
+    );
   }
 
+  const appShellClassName = isSidebarCollapsed
+    ? "app-shell sidebar-collapsed"
+    : "app-shell";
+
+  const navAbbreviations = {
+    overview: "TQ",
+    catalog: "DM",
+    operations: "DP",
+    facilities: "CS",
+    students: "SV",
+    finance: "TC",
+    admin: "QT",
+  };
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className={isSidebarCollapsed ? 'brand-panel compact' : 'brand-panel'}>
+    <div className={appShellClassName}>
+      <aside className={isSidebarCollapsed ? "sidebar compact" : "sidebar"}>
+        <div
+          className={isSidebarCollapsed ? "brand-panel compact" : "brand-panel"}
+        >
           <div className="brand-panel-header">
             <div className="brand-panel-title">
-              <img src="/dormitory-hub-logo.svg" alt="Dormitory Hub" className="brand-logo" />
+              <img
+                src="/dormitory-hub-logo.svg"
+                alt="Dormitory Hub"
+                className="brand-logo"
+              />
               <span className="brand-kicker">DORMITORY HUB</span>
             </div>
-            <button className="sidebar-toggle" onClick={toggleSidebarCollapse} title={isSidebarCollapsed ? "Mở rộng" : "Thu gọn"}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                {isSidebarCollapsed ? <polyline points="9 18 15 12 9 6"></polyline> : <polyline points="15 18 9 12 15 6"></polyline>}
+            <button
+              className="sidebar-toggle"
+              onClick={toggleSidebarCollapse}
+              title={isSidebarCollapsed ? "Mở rộng" : "Thu gọn"}
+              aria-label={isSidebarCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {isSidebarCollapsed ? (
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                ) : (
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                )}
               </svg>
             </button>
           </div>
-          <h2>Điều hành lưu trú thông minh</h2>
+          <h2>{!isSidebarCollapsed && "Điều hành lưu trú thông minh"}</h2>
           <div className="brand-panel-user-row">
-            <p>
-              <span className="greeting-text">Xin chào ! </span>
-              <strong>{user.fullName || user.username}</strong>
-            </p>
-            <button className="secondary-button" onClick={logout}>Đăng xuất</button>
+            {!isSidebarCollapsed && (
+              <div className="user-info">
+                <p>
+                  <span className="greeting-text">Xin chào ! </span>
+                  <strong>{user.fullName || user.username}</strong>
+                </p>
+              </div>
+            )}
+            <button className="secondary-button" onClick={logout}>
+              Đăng xuất
+            </button>
           </div>
         </div>
 
-        <div className={isSidebarSummaryCollapsed ? 'sidebar-summary compact' : 'sidebar-summary'}>
-          <div className="sidebar-summary-header" onClick={toggleSidebarSummary}>
+        <div
+          className={
+            isSidebarCollapsed || isSidebarSummaryCollapsed
+              ? "sidebar-summary compact"
+              : "sidebar-summary"
+          }
+        >
+          <div
+            className="sidebar-summary-header"
+            onClick={toggleSidebarSummary}
+          >
             <span>Thống kê</span>
             <button title={isSidebarSummaryCollapsed ? "Mở rộng" : "Thu gọn"}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {isSidebarSummaryCollapsed ? <polyline points="6 9 12 15 18 9"></polyline> : <polyline points="18 15 12 9 6 15"></polyline>}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {isSidebarSummaryCollapsed ? (
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                ) : (
+                  <polyline points="18 15 12 9 6 15"></polyline>
+                )}
               </svg>
             </button>
           </div>
-          <SummaryBlock label="Phòng đang ở" value={numberFormat.format(dashboard.summary.occupiedRooms)} compact={isSidebarSummaryCollapsed} />
-          <SummaryBlock label="Giường còn trống" value={numberFormat.format(dashboard.summary.availableBeds)} compact={isSidebarSummaryCollapsed} />
-          <SummaryBlock label="Chờ duyệt" value={numberFormat.format(dashboard.summary.waitingStudents)} compact={isSidebarSummaryCollapsed} />
+          <SummaryBlock
+            label="Phòng đang ở"
+            value={numberFormat.format(dashboard.summary.occupiedRooms)}
+            compact={isSidebarCollapsed || isSidebarSummaryCollapsed}
+          />
+          <SummaryBlock
+            label="Giường còn trống"
+            value={numberFormat.format(dashboard.summary.availableBeds)}
+            compact={isSidebarCollapsed || isSidebarSummaryCollapsed}
+          />
+          <SummaryBlock
+            label="Chờ duyệt"
+            value={numberFormat.format(dashboard.summary.waitingStudents)}
+            compact={isSidebarCollapsed || isSidebarSummaryCollapsed}
+          />
         </div>
 
-        <nav className={isSidebarNavCollapsed ? 'nav-grid collapsed' : 'nav-grid'}>
+        <nav
+          className={isSidebarNavCollapsed ? "nav-grid collapsed" : "nav-grid"}
+        >
           <div className="nav-section-header" onClick={toggleSidebarNav}>
             <span>Danh mục</span>
             <button title={isSidebarNavCollapsed ? "Mở rộng" : "Thu gọn"}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {isSidebarNavCollapsed ? <polyline points="6 9 12 15 18 9"></polyline> : <polyline points="18 15 12 9 6 15"></polyline>}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {isSidebarNavCollapsed ? (
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                ) : (
+                  <polyline points="18 15 12 9 6 15"></polyline>
+                )}
               </svg>
             </button>
           </div>
           {allowedNavs.map((item) => (
             <button
               key={item.key}
-              className={section === item.key ? 'nav-link active' : 'nav-link'}
+              className={section === item.key ? "nav-link active" : "nav-link"}
               onClick={() => navigate(item.path)}
+              title={item.label}
             >
-              {item.label}
+              <span className="nav-abbr">
+                {navAbbreviations[item.key] ?? item.label.slice(0, 2)}
+              </span>
+              <span className="nav-label">{item.label}</span>
             </button>
           ))}
         </nav>
@@ -283,7 +493,8 @@ function App() {
             <p className="eyebrow">Hệ thống quản trị ký túc xá</p>
             <h1>Trang quản trị vận hành thực tế cho khu nội trú sinh viên</h1>
             <p className="page-description">
-              Theo dõi công suất phòng, xử lý hồ sơ, điều phối chỗ ở và kiểm soát dòng tiền trên một giao diện đẹp, dễ dùng và responsive.
+              Theo dõi công suất phòng, xử lý hồ sơ, điều phối chỗ ở và kiểm
+              soát dòng tiền trên một giao diện đẹp, dễ dùng và responsive.
             </p>
           </div>
           <div className="hero-focus-card">
@@ -296,7 +507,7 @@ function App() {
                 <article
                   key={item.label}
                   className={`hero-focus-item ${item.tone}`}
-                  style={{ cursor: item.route ? 'pointer' : 'default' }}
+                  style={{ cursor: item.route ? "pointer" : "default" }}
                   onClick={() => handleFocusCardClick(item)}
                 >
                   <span>{item.label}</span>
@@ -305,8 +516,15 @@ function App() {
               ))}
             </div>
             <div className="header-actions">
-              <button className="primary-button" onClick={refreshData}>{'L\u00e0m m\u1edbi to\u00e0n h\u1ec7 th\u1ed1ng'}</button>
-              <button className="secondary-button" onClick={() => openCreate('students')}>{'Ti\u1ebfp nh\u1eadn sinh vi\u00ean m\u1edbi'}</button>
+              <button className="primary-button" onClick={refreshData}>
+                {"L\u00e0m m\u1edbi to\u00e0n h\u1ec7 th\u1ed1ng"}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => openCreate("students")}
+              >
+                {"Ti\u1ebfp nh\u1eadn sinh vi\u00ean m\u1edbi"}
+              </button>
             </div>
           </div>
         </header>
@@ -314,11 +532,32 @@ function App() {
         <StatusToast error={error} notice={notice} saving={saving} />
 
         <section className="top-metrics">
-          <MetricCard label={'T\u1ed5ng sinh vi\u00ean'} value={numberFormat.format(dashboard.summary.totalStudents)} accent="blue" />
-          <MetricCard label={'H\u1ee3p \u0111\u1ed3ng hi\u1ec7u l\u1ef1c'} value={numberFormat.format(dashboard.summary.activeContracts)} accent="emerald" />
-          <MetricCard label={'H\u00f3a \u0111\u01a1n ch\u01b0a thu'} value={numberFormat.format(dashboard.summary.unpaidInvoices)} accent="amber" />
-          <MetricCard label={'Qu\u00e1 h\u1ea1n thanh to\u00e1n'} value={numberFormat.format(dashboard.summary.overdueInvoices)} accent="rose" />
-          <MetricCard label={'Doanh thu th\u00e1ng'} value={currencyFormat.format(dashboard.summary.revenueThisMonth)} accent="violet" large />
+          <MetricCard
+            label={"T\u1ed5ng sinh vi\u00ean"}
+            value={numberFormat.format(dashboard.summary.totalStudents)}
+            accent="blue"
+          />
+          <MetricCard
+            label={"H\u1ee3p \u0111\u1ed3ng hi\u1ec7u l\u1ef1c"}
+            value={numberFormat.format(dashboard.summary.activeContracts)}
+            accent="emerald"
+          />
+          <MetricCard
+            label={"H\u00f3a \u0111\u01a1n ch\u01b0a thu"}
+            value={numberFormat.format(dashboard.summary.unpaidInvoices)}
+            accent="amber"
+          />
+          <MetricCard
+            label={"Qu\u00e1 h\u1ea1n thanh to\u00e1n"}
+            value={numberFormat.format(dashboard.summary.overdueInvoices)}
+            accent="rose"
+          />
+          <MetricCard
+            label={"Doanh thu th\u00e1ng"}
+            value={currencyFormat.format(dashboard.summary.revenueThisMonth)}
+            accent="violet"
+            large
+          />
         </section>
 
         <SectionBanner
@@ -326,26 +565,56 @@ function App() {
           title={sectionBannerContent.title}
           description={sectionBannerContent.description}
           stats={safeSectionStats}
-          actions={section === 'overview' ? (
-            <>
-              <button className="secondary-button" onClick={() => navigate('/operations')}>{'M\u1edf \u0111i\u1ec1u ph\u1ed1i'}</button>
-              <button className="secondary-button" onClick={() => navigate('/finance')}>{'M\u1edf t\u00e0i ch\u00ednh'}</button>
-            </>
-          ) : null}
+          actions={
+            section === "overview" ? (
+              <>
+                <button
+                  className="secondary-button"
+                  onClick={() => navigate("/operations")}
+                >
+                  {"M\u1edf \u0111i\u1ec1u ph\u1ed1i"}
+                </button>
+                <button
+                  className="secondary-button"
+                  onClick={() => navigate("/finance")}
+                >
+                  {"M\u1edf t\u00e0i ch\u00ednh"}
+                </button>
+              </>
+            ) : null
+          }
         />
 
         <RouteErrorBoundary resetKey={location.pathname}>
-          <Suspense fallback={<div className="page-loading">Đang mở phân hệ...</div>}>
+          <Suspense
+            fallback={<div className="page-loading">Đang mở phân hệ...</div>}
+          >
             <Routes>
               <Route path="/" element={<Navigate to="/overview" replace />} />
-              <Route path="/overview" element={<OverviewSection dashboard={dashboard} getPanelProps={getPanelProps} />} />
+              <Route
+                path="/overview"
+                element={
+                  <OverviewSection
+                    dashboard={dashboard}
+                    getPanelProps={getPanelProps}
+                  />
+                }
+              />
               <Route
                 path="/catalog"
-                element={<CatalogSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+                element={
+                  <CatalogSection
+                    data={data}
+                    openCreate={openCreate}
+                    openEdit={openEdit}
+                    deleteEntity={deleteEntity}
+                    getPanelProps={getPanelProps}
+                  />
+                }
               />
               <Route
                 path="/operations"
-                element={(
+                element={
                   <OperationsSection
                     data={data}
                     roomOverview={roomOverview}
@@ -361,23 +630,59 @@ function App() {
                     saving={saving}
                     getPanelProps={getPanelProps}
                   />
-                )}
+                }
               />
               <Route
                 path="/facilities"
-                element={<FacilitiesSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+                element={
+                  <FacilitiesSection
+                    data={data}
+                    openCreate={openCreate}
+                    openEdit={openEdit}
+                    deleteEntity={deleteEntity}
+                    getPanelProps={getPanelProps}
+                  />
+                }
               />
               <Route
                 path="/students"
-                element={<StudentsSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} refreshData={refreshData} />}
+                element={
+                  <StudentsSection
+                    data={data}
+                    openCreate={openCreate}
+                    openEdit={openEdit}
+                    deleteEntity={deleteEntity}
+                    getPanelProps={getPanelProps}
+                    refreshData={refreshData}
+                  />
+                }
               />
               <Route
                 path="/finance"
-                element={<FinanceSection data={data} financeSummary={financeSummary} executeAction={executeAction} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} refreshData={refreshData} />}
+                element={
+                  <FinanceSection
+                    data={data}
+                    financeSummary={financeSummary}
+                    executeAction={executeAction}
+                    openCreate={openCreate}
+                    openEdit={openEdit}
+                    deleteEntity={deleteEntity}
+                    getPanelProps={getPanelProps}
+                    refreshData={refreshData}
+                  />
+                }
               />
               <Route
                 path="/admin"
-                element={<AdminSection data={data} openCreate={openCreate} openEdit={openEdit} deleteEntity={deleteEntity} getPanelProps={getPanelProps} />}
+                element={
+                  <AdminSection
+                    data={data}
+                    openCreate={openCreate}
+                    openEdit={openEdit}
+                    deleteEntity={deleteEntity}
+                    getPanelProps={getPanelProps}
+                  />
+                }
               />
               <Route path="*" element={<Navigate to="/overview" replace />} />
             </Routes>
@@ -386,19 +691,33 @@ function App() {
 
         {modal ? (
           <ModalCard
-            title={`${modal.mode === 'create' ? 'Thêm mới' : 'Cập nhật'} ${ENTITY_CONFIGS[modal.entityKey].title}`}
+            title={`${modal.mode === "create" ? "Thêm mới" : "Cập nhật"} ${ENTITY_CONFIGS[modal.entityKey].title}`}
             subtitle="Điền đầy đủ dữ liệu để hệ thống cập nhật chính xác."
             onClose={() => setModal(null)}
             footer={
               <>
-                <button className="secondary-button" onClick={() => setModal(null)}>Đóng</button>
-                <button className="primary-button" onClick={saveEntity} disabled={saving}>
-                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                <button
+                  className="secondary-button"
+                  onClick={() => setModal(null)}
+                >
+                  Đóng
+                </button>
+                <button
+                  className="primary-button"
+                  onClick={saveEntity}
+                  disabled={saving}
+                >
+                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </>
             }
           >
-            <EntityForm modal={modal} lookups={{ ...lookups, users: data.users || [] }} updateModalField={updateModalField} errors={formErrors} />
+            <EntityForm
+              modal={modal}
+              lookups={{ ...lookups, users: data.users || [] }}
+              updateModalField={updateModalField}
+              errors={formErrors}
+            />
           </ModalCard>
         ) : null}
 
@@ -409,22 +728,37 @@ function App() {
             onClose={() => setConfirmDelete(null)}
             footer={
               <>
-                <button className="secondary-button" onClick={() => setConfirmDelete(null)}>Hủy</button>
-                <button className="primary-button danger" onClick={confirmDeleteAction} disabled={saving}>
-                  {saving ? 'Đang xóa...' : 'Xóa'}
+                <button
+                  className="secondary-button"
+                  onClick={() => setConfirmDelete(null)}
+                >
+                  Hủy
+                </button>
+                <button
+                  className="primary-button danger"
+                  onClick={confirmDeleteAction}
+                  disabled={saving}
+                >
+                  {saving ? "Đang xóa..." : "Xóa"}
                 </button>
               </>
             }
           >
-            <p style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--text-secondary, #666)' }}>
-              Dữ liệu liên quan sẽ bị ảnh hưởng. Vui lòng kiểm tra kỹ trước khi xác nhận.
+            <p
+              style={{
+                textAlign: "center",
+                padding: "1rem 0",
+                color: "var(--text-secondary, #666)",
+              }}
+            >
+              Dữ liệu liên quan sẽ bị ảnh hưởng. Vui lòng kiểm tra kỹ trước khi
+              xác nhận.
             </p>
           </ModalCard>
         ) : null}
       </main>
     </div>
-  )
+  );
 }
 
-
-export default App
+export default App;

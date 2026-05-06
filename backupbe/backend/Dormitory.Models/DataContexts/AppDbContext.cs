@@ -27,6 +27,7 @@ namespace Dormitory.Models.DataContexts
         public DbSet<RoomFinanceStudentShare> RoomFinanceStudentShares { get; set; }
         public DbSet<RoomTransferRequest> RoomTransferRequests { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<RoomAssignment> RoomAssignments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -77,12 +78,18 @@ namespace Dormitory.Models.DataContexts
                 .IsUnique();
 
             modelBuilder.Entity<Contract>()
-                .HasIndex(x => x.ContractCode)
+                .HasIndex(x => new { x.ContractCode, x.Status })
+                .IsUnique();
+
+            modelBuilder.Entity<Contract>()
+                .HasIndex(x => x.StudentId)
                 .IsUnique();
 
             modelBuilder.Entity<RoomFeeProfile>()
-                .HasIndex(x => x.RoomId)
-                .IsUnique();
+                .HasIndex(x => new { x.RoomId, x.Status });
+
+            modelBuilder.Entity<RoomFeeProfile>()
+                .HasIndex(x => new { x.RoomId, x.EffectiveFrom });
 
             modelBuilder.Entity<RoomFinanceRecord>()
                 .HasIndex(x => new { x.RoomId, x.BillingMonth })
@@ -135,10 +142,27 @@ namespace Dormitory.Models.DataContexts
                 .WithMany(x => x.Contracts)
                 .HasForeignKey(x => x.StudentId)
                 .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<RoomAssignment>()
+                 .HasIndex(x => new { x.StudentId, x.Status });
 
-            modelBuilder.Entity<Contract>()
+            modelBuilder.Entity<RoomAssignment>()
+                .HasIndex(x => new { x.RoomId, x.Status });
+
+            //modelBuilder.Entity<Contract>()
+            //    .HasOne(x => x.Room)
+            //    .WithMany(x => x.Contracts)
+            //    .HasForeignKey(x => x.RoomId)
+            //    .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RoomAssignment>()
+                .HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RoomAssignment>()
                 .HasOne(x => x.Room)
-                .WithMany(x => x.Contracts)
+                .WithMany()
                 .HasForeignKey(x => x.RoomId)
                 .OnDelete(DeleteBehavior.Restrict);
 

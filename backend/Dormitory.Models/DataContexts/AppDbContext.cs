@@ -80,6 +80,10 @@ namespace Dormitory.Models.DataContexts
                 .HasIndex(x => x.ContractCode)
                 .IsUnique();
 
+            modelBuilder.Entity<Contract>()
+                .HasIndex(x => x.StudentId)
+                .IsUnique();
+
             modelBuilder.Entity<RoomFeeProfile>()
                 .HasIndex(x => x.RoomId)
                 .IsUnique();

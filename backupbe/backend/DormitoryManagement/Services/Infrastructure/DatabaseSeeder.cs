@@ -89,8 +89,8 @@ public static class DatabaseSeeder
 
         var contracts = new List<Contract>
         {
-            new() { ContractCode = "HD-2026-001", StudentId = students[0].Id, RoomId = rooms[0].Id, DepositAmount = 1000000, MonthlyFee = rooms[0].PricePerMonth, StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 12, 31), Status = "Active", CreatedAt = now },
-            new() { ContractCode = "HD-2026-002", StudentId = students[2].Id, RoomId = rooms[2].Id, DepositAmount = 1000000, MonthlyFee = rooms[2].PricePerMonth, StartDate = new DateTime(2026, 2, 1), EndDate = new DateTime(2026, 12, 31), Status = "Active", CreatedAt = now }
+            new() { ContractCode = "HD-2026-001", StudentId = students[0].Id, DepositAmount = 1000000, MonthlyFee = rooms[0].PricePerMonth, StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 12, 31), Status = "Active", CreatedAt = now },
+            new() { ContractCode = "HD-2026-002", StudentId = students[2].Id, DepositAmount = 1000000, MonthlyFee = rooms[2].PricePerMonth, StartDate = new DateTime(2026, 2, 1), EndDate = new DateTime(2026, 12, 31), Status = "Active", CreatedAt = now }
         };
         db.Contracts.AddRange(contracts);
         await db.SaveChangesAsync();

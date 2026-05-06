@@ -92,7 +92,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
                 contractState,
                 contractStatus = latestContract?.Status,
                 contractEndDate = latestContract?.EndDate,
-                contractRoomId = validContract?.RoomId,
+                //contractRoomId = validContract?.RoomId,
                 contractWarning = contractState switch
                 {
                     "Valid" => "Hợp đồng hiệu lực",

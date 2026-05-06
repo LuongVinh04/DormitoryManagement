@@ -133,6 +133,7 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     {
         var data = await db.Contracts
             .Include(x => x.Student)
+            .ThenInclude(x => x!.Room)
             .Include(x => x.Room)
             .OrderByDescending(x => x.StartDate)
             .Select(x => new
@@ -141,8 +142,8 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
                 x.ContractCode,
                 x.StudentId,
                 studentName = x.Student!.Name,
-                x.RoomId,
-                roomNumber = x.Room!.RoomNumber,
+                //RoomId = x.Student.RoomId ?? x.RoomId,
+                roomNumber = x.Student.Room!=null ? x.Student.Room.RoomNumber : x.Room!.RoomNumber,
                 x.DepositAmount,
                 x.MonthlyFee,
                 x.StartDate,
@@ -158,20 +159,50 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     [HttpPost("contracts")]
     public async Task<IActionResult> CreateContract([FromBody] ContractRequest request)
     {
+        //validate + normalize mã hợp đồng
+        var contractCode = request.ContractCode?.Trim().ToUpper();
+        var status = request.Status.Trim();
+
+        if (string.IsNullOrEmpty(contractCode))
+            return Conflict(new { message = "Mã hợp đồng không được để trống." });
+
+        //check trùng trước
+        var exists = await db.Contracts.AnyAsync(x => x.ContractCode == contractCode);
+
+        if (exists)
+            return BadRequest("Mã hợp đồng đã tồn tại. Vui lòng chọn mã khác.");
+
+        //check trùng mã sinh viên
+        if (await db.Contracts.AnyAsync(x => x.StudentId == request.StudentId))
+        {
+            return Conflict(new { message = "Sinh viên này đã có hợp đồng. Vui lòng kiểm tra lại." });
+        }
+
+        //map dữ liệu
         var entity = new Contract
         {
             ContractCode = request.ContractCode.Trim(),
             StudentId = request.StudentId,
-            RoomId = request.RoomId,
+            //RoomId = request.RoomId,
             DepositAmount = request.DepositAmount,
             MonthlyFee = request.MonthlyFee,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             Status = request.Status.Trim()
         };
-
         db.Contracts.Add(entity);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "StudentId"))
+        {
+            return Conflict(new { message = "Sinh viên đã có mã hợp đồng lưu trú. Vui lòng chọn lại" });
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "ContractCode"))
+        {
+            return Conflict(new { message = "Trùng mã hợp đồng. Vui lòng chọn lại" });
+        }
         return Ok(entity);
     }
 
@@ -190,17 +221,41 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
                 return BadRequest(new { message = "Cần trả phòng cho sinh viên trước khi hủy hợp đồng." });
             }
         }
+        var contractCode = request.ContractCode.Trim();
+        var status = request.Status.Trim();
+
+        if (await db.Contracts.AnyAsync(x => x.Id != id && x.ContractCode == contractCode))
+        {
+            return Conflict(new { message = "Trùng mã hợp đồng. Vui lòng chọn lại" });
+        }
+
+        if (await db.Contracts.AnyAsync(x => x.Id != id && x.StudentId == request.StudentId))
+        {
+            return Conflict(new { message = "Sinh viên đã có mã hợp đồng lưu trú. Vui lòng chọn lại" });
+        }
 
         entity.ContractCode = request.ContractCode.Trim();
         entity.StudentId = request.StudentId;
-        entity.RoomId = request.RoomId;
+        //entity.RoomId = request.RoomId;
         entity.DepositAmount = request.DepositAmount;
         entity.MonthlyFee = request.MonthlyFee;
         entity.StartDate = request.StartDate;
         entity.EndDate = request.EndDate;
         entity.Status = request.Status.Trim();
         entity.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "StudentId"))
+        {
+            return Conflict(new { message = "Sinh viên đã có mã hợp đồng lưu trú. Vui lòng chọn lại" });
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "ContractCode"))
+        {
+            return Conflict(new { message = "Trùng mã hợp đồng. Vui lòng chọn lại" });
+        }
+
         return Ok(entity);
     }
 
@@ -1037,7 +1092,7 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
 
         if (normalized.Equals("Cash", StringComparison.OrdinalIgnoreCase) ||
             normalized.Equals("Tiền mặt", StringComparison.OrdinalIgnoreCase) ||
-            normalized.Equals("Tien mat", StringComparison.OrdinalIgnoreCase))
+            normalized.Equals("Tiền mặt", StringComparison.OrdinalIgnoreCase))
         {
             return "Cash";
         }
@@ -1049,6 +1104,16 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         }
 
         return null;
+    }
+
+    private static bool IsContractUniquenessError(DbUpdateException error, string fieldName)
+    {
+        var message = error.InnerException?.Message ?? error.Message;
+
+        return message.Contains("Contracts", StringComparison.OrdinalIgnoreCase) &&
+               message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) &&
+               (message.Contains(fieldName, StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("duplicate", StringComparison.OrdinalIgnoreCase));
     }
 
     [HttpDelete("room-finance-shares/{shareId:int}")]

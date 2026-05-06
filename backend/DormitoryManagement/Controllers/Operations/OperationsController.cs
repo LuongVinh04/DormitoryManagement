@@ -133,6 +133,7 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     {
         var data = await db.Contracts
             .Include(x => x.Student)
+            .ThenInclude(x => x!.Room)
             .Include(x => x.Room)
             .OrderByDescending(x => x.StartDate)
             .Select(x => new
@@ -141,8 +142,8 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
                 x.ContractCode,
                 x.StudentId,
                 studentName = x.Student!.Name,
-                x.RoomId,
-                roomNumber = x.Room!.RoomNumber,
+                roomId = x.Student.RoomId ?? x.RoomId,
+                roomNumber = x.Student.Room != null ? x.Student.Room.RoomNumber : x.Room!.RoomNumber,
                 x.DepositAmount,
                 x.MonthlyFee,
                 x.StartDate,
@@ -158,20 +159,45 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     [HttpPost("contracts")]
     public async Task<IActionResult> CreateContract([FromBody] ContractRequest request)
     {
+        var contractCode = request.ContractCode.Trim();
+        var status = request.Status.Trim();
+
+        if (await db.Contracts.AnyAsync(x => x.ContractCode == contractCode))
+        {
+            return Conflict(new { message = "Trung ma hop dong" });
+        }
+
+        if (await db.Contracts.AnyAsync(x => x.StudentId == request.StudentId))
+        {
+            return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
+        }
+
         var entity = new Contract
         {
-            ContractCode = request.ContractCode.Trim(),
+            ContractCode = contractCode,
             StudentId = request.StudentId,
             RoomId = request.RoomId,
             DepositAmount = request.DepositAmount,
             MonthlyFee = request.MonthlyFee,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            Status = request.Status.Trim()
+            Status = status
         };
 
         db.Contracts.Add(entity);
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "StudentId"))
+        {
+            return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "ContractCode"))
+        {
+            return Conflict(new { message = "Trung ma hop dong" });
+        }
+
         return Ok(entity);
     }
 
@@ -191,16 +217,41 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
             }
         }
 
-        entity.ContractCode = request.ContractCode.Trim();
+        var contractCode = request.ContractCode.Trim();
+        var status = request.Status.Trim();
+
+        if (await db.Contracts.AnyAsync(x => x.Id != id && x.ContractCode == contractCode))
+        {
+            return Conflict(new { message = "Trung ma hop dong" });
+        }
+
+        if (await db.Contracts.AnyAsync(x => x.Id != id && x.StudentId == request.StudentId))
+        {
+            return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
+        }
+
+        entity.ContractCode = contractCode;
         entity.StudentId = request.StudentId;
         entity.RoomId = request.RoomId;
         entity.DepositAmount = request.DepositAmount;
         entity.MonthlyFee = request.MonthlyFee;
         entity.StartDate = request.StartDate;
         entity.EndDate = request.EndDate;
-        entity.Status = request.Status.Trim();
+        entity.Status = status;
         entity.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "StudentId"))
+        {
+            return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
+        }
+        catch (DbUpdateException error) when (IsContractUniquenessError(error, "ContractCode"))
+        {
+            return Conflict(new { message = "Trung ma hop dong" });
+        }
+
         return Ok(entity);
     }
 
@@ -1101,6 +1152,16 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         }
 
         return null;
+    }
+
+    private static bool IsContractUniquenessError(DbUpdateException error, string fieldName)
+    {
+        var message = error.InnerException?.Message ?? error.Message;
+
+        return message.Contains("Contracts", StringComparison.OrdinalIgnoreCase) &&
+            message.Contains(fieldName, StringComparison.OrdinalIgnoreCase) &&
+            (message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) ||
+             message.Contains("duplicate", StringComparison.OrdinalIgnoreCase));
     }
 
     [HttpDelete("room-finance-shares/{shareId:int}")]

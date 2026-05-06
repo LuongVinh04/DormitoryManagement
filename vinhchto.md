@@ -283,7 +283,6 @@ npm run build
 
 Seed hiện có:
 
-- `admin` / `admin123`
 - `roomoperator` / `manager123`
 - `cashier` / `cashier123`
 

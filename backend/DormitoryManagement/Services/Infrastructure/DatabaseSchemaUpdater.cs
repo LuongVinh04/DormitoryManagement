@@ -141,6 +141,22 @@ public static class DatabaseSchemaUpdater
             IF COL_LENGTH('dbo.Users', 'StudentId') IS NULL
                 ALTER TABLE [dbo].[Users] ADD [StudentId] INT NULL;
 
+            IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE name = N'IX_Contracts_StudentId'
+                        AND object_id = OBJECT_ID(N'dbo.Contracts')
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM [dbo].[Contracts]
+                    GROUP BY [StudentId]
+                    HAVING COUNT(*) > 1
+                )
+            BEGIN
+                CREATE UNIQUE INDEX [IX_Contracts_StudentId] ON [dbo].[Contracts]([StudentId]);
+            END
+
             IF OBJECT_ID(N'dbo.RoomFinanceStudentShares', N'U') IS NULL
             BEGIN
                 CREATE TABLE [dbo].[RoomFinanceStudentShares]
