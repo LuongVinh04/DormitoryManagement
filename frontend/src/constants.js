@@ -371,15 +371,7 @@ export const ENTITY_CONFIGS = {
         lookup: "students",
         optionLabel: (item) => `${item.studentCode} - ${item.name}`,
       },
-      {
-        name: "roomId",
-        label: "Phòng",
-        type: "lookup",
-        lookup: "rooms",
-        optionLabel: (item) => `${item.roomNumber} (${item.buildingName})`,
-      },
       { name: "depositAmount", label: "Tiền đặt cọc", type: "number" },
-      { name: "monthlyFee", label: "Phí hàng tháng", type: "number" },
       { name: "startDate", label: "Ngày bắt đầu", type: "date" },
       { name: "endDate", label: "Ngày kết thúc", type: "date" },
       {

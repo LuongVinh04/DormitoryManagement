@@ -144,6 +144,7 @@ namespace Dormitory.Models.DataContexts
                 .HasOne(x => x.Room)
                 .WithMany(x => x.Contracts)
                 .HasForeignKey(x => x.RoomId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Utilities>()

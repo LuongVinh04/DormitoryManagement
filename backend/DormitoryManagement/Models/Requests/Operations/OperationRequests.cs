@@ -14,7 +14,7 @@ public class ContractRequest
 {
     public string ContractCode { get; set; } = string.Empty;
     public int StudentId { get; set; }
-    public int RoomId { get; set; }
+    public int? RoomId { get; set; }
     public decimal DepositAmount { get; set; }
     public decimal MonthlyFee { get; set; }
     public DateTime StartDate { get; set; }

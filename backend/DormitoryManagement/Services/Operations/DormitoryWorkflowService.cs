@@ -72,10 +72,18 @@ public static class DormitoryWorkflowService
             return (false, validation.Message, student, room);
         }
 
+        var activeContract = await GetCurrentActiveContractAsync(db, studentId);
+        if (activeContract is null)
+        {
+            return (false, "Sinh viên cần có hợp đồng lưu trú hiệu lực trước khi xếp phòng.", student, room);
+        }
+
         var previousRoomId = student.RoomId;
         student.RoomId = roomId;
         student.Status = status;
         student.UpdatedAt = DateTime.UtcNow;
+        activeContract.RoomId = roomId;
+        activeContract.UpdatedAt = DateTime.UtcNow;
 
         if (previousRoomId.HasValue && previousRoomId.Value != roomId)
         {
@@ -179,8 +187,8 @@ public static class DormitoryWorkflowService
         var room = await db.Rooms.FirstAsync(x => x.Id == registration.RoomId);
         var contractExists = await db.Contracts.AnyAsync(x =>
             x.StudentId == registration.StudentId &&
-            x.RoomId == registration.RoomId &&
             x.Status == "Active" &&
+            x.StartDate <= decisionDate.Date &&
             x.EndDate >= decisionDate.Date);
 
         if (!contractExists)
@@ -467,20 +475,10 @@ public static class DormitoryWorkflowService
             return (true, null);
         }
 
-        // Kiểm tra sinh viên có hợp đồng hợp lệ
-        var today = DateTime.Today;
-        var tomorrow = today.AddDays(1);
-
-        var hasValidContract = await db.Contracts.AnyAsync(x =>
-            x.StudentId == student.Id &&
-            x.RoomId == room.Id &&
-            x.Status == "Active" &&
-            x.StartDate < tomorrow &&
-            x.EndDate >= today);
-
-        if (!hasValidContract)
+        var activeContract = await GetCurrentActiveContractAsync(db, student.Id);
+        if (activeContract is null)
         {
-            return (false, "Sinh viên cần có hợp đồng lưu trú hiệu lực cho đúng phòng trước khi xếp phòng.");
+            return (false, "Sinh viên cần có hợp đồng lưu trú hiệu lực trước khi xếp phòng.");
         }
 
         var currentOccupancy = await db.Students.CountAsync(x => x.RoomId == room.Id && x.Id != student.Id);
@@ -504,6 +502,23 @@ public static class DormitoryWorkflowService
         }
 
         return (true, null);
+    }
+
+    private static async Task<Contract?> GetCurrentActiveContractAsync(AppDbContext db, int studentId)
+    {
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
+        return await db.Contracts
+            .Where(x =>
+                x.StudentId == studentId &&
+                x.Status == "Active" &&
+                x.StartDate < tomorrow &&
+                x.EndDate >= today)
+            .OrderByDescending(x => x.EndDate)
+            .ThenByDescending(x => x.StartDate)
+            .ThenByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
     }
 }
 

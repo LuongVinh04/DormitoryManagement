@@ -143,7 +143,11 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
                 x.StudentId,
                 studentName = x.Student!.Name,
                 roomId = x.Student.RoomId ?? x.RoomId,
-                roomNumber = x.Student.Room != null ? x.Student.Room.RoomNumber : x.Room!.RoomNumber,
+                roomNumber = x.Student.Room != null
+                    ? x.Student.Room.RoomNumber
+                    : x.Room != null
+                        ? x.Room.RoomNumber
+                        : "Chưa xếp phòng",
                 x.DepositAmount,
                 x.MonthlyFee,
                 x.StartDate,
@@ -172,11 +176,17 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
             return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
         }
 
+        var student = await db.Students.FindAsync(request.StudentId);
+        if (student is null)
+        {
+            return BadRequest(new { message = "Khong tim thay sinh vien" });
+        }
+
         var entity = new Contract
         {
             ContractCode = contractCode,
             StudentId = request.StudentId,
-            RoomId = request.RoomId,
+            RoomId = request.RoomId ?? student.RoomId,
             DepositAmount = request.DepositAmount,
             MonthlyFee = request.MonthlyFee,
             StartDate = request.StartDate,
@@ -230,9 +240,24 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
             return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
         }
 
+        var contractStudent = await db.Students.FindAsync(request.StudentId);
+        if (contractStudent is null)
+        {
+            return BadRequest(new { message = "Khong tim thay sinh vien" });
+        }
+
+        var studentChanged = entity.StudentId != request.StudentId;
+
         entity.ContractCode = contractCode;
         entity.StudentId = request.StudentId;
-        entity.RoomId = request.RoomId;
+        if (request.RoomId.HasValue)
+        {
+            entity.RoomId = request.RoomId;
+        }
+        else if (studentChanged || !entity.RoomId.HasValue)
+        {
+            entity.RoomId = contractStudent.RoomId;
+        }
         entity.DepositAmount = request.DepositAmount;
         entity.MonthlyFee = request.MonthlyFee;
         entity.StartDate = request.StartDate;

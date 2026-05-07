@@ -141,6 +141,57 @@ public static class DatabaseSchemaUpdater
             IF COL_LENGTH('dbo.Users', 'StudentId') IS NULL
                 ALTER TABLE [dbo].[Users] ADD [StudentId] INT NULL;
 
+            IF COL_LENGTH('dbo.Contracts', 'RoomId') IS NOT NULL
+                AND COLUMNPROPERTY(OBJECT_ID(N'dbo.Contracts'), 'RoomId', 'AllowsNull') = 0
+            BEGIN
+                DECLARE @DropContractRoomFkSql NVARCHAR(MAX) = N'';
+
+                SELECT @DropContractRoomFkSql = @DropContractRoomFkSql
+                    + N'ALTER TABLE [dbo].[Contracts] DROP CONSTRAINT [' + fk.[name] + N'];'
+                FROM sys.foreign_keys fk
+                INNER JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+                INNER JOIN sys.columns col ON col.object_id = fkc.parent_object_id AND col.column_id = fkc.parent_column_id
+                WHERE fk.parent_object_id = OBJECT_ID(N'dbo.Contracts')
+                    AND col.[name] = N'RoomId';
+
+                IF @DropContractRoomFkSql <> N''
+                    EXEC sp_executesql @DropContractRoomFkSql;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE [name] = N'IX_Contracts_RoomId'
+                        AND object_id = OBJECT_ID(N'dbo.Contracts')
+                )
+                    DROP INDEX [IX_Contracts_RoomId] ON [dbo].[Contracts];
+
+                ALTER TABLE [dbo].[Contracts] ALTER COLUMN [RoomId] INT NULL;
+
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE [name] = N'IX_Contracts_RoomId'
+                        AND object_id = OBJECT_ID(N'dbo.Contracts')
+                )
+                    CREATE INDEX [IX_Contracts_RoomId] ON [dbo].[Contracts]([RoomId]);
+
+                IF OBJECT_ID(N'dbo.FK_Contracts_Rooms_RoomId', N'F') IS NULL
+                    ALTER TABLE [dbo].[Contracts]
+                    ADD CONSTRAINT [FK_Contracts_Rooms_RoomId]
+                    FOREIGN KEY ([RoomId]) REFERENCES [dbo].[Rooms]([Id]) ON DELETE NO ACTION;
+            END
+
+            UPDATE c
+            SET [RoomId] = s.[RoomId],
+                [UpdatedAt] = GETUTCDATE()
+            FROM [dbo].[Contracts] c
+            INNER JOIN [dbo].[Students] s ON s.[Id] = c.[StudentId]
+            WHERE c.[Status] = N'Active'
+                AND c.[StartDate] < DATEADD(DAY, 1, CONVERT(date, GETDATE()))
+                AND c.[EndDate] >= CONVERT(date, GETDATE())
+                AND s.[RoomId] IS NOT NULL
+                AND (c.[RoomId] IS NULL OR c.[RoomId] <> s.[RoomId]);
+
             IF NOT EXISTS (
                     SELECT 1
                     FROM sys.indexes
