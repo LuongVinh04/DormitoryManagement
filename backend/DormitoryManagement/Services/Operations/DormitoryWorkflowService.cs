@@ -410,12 +410,69 @@ public static class DormitoryWorkflowService
             return (false, "Số tiền thu phải lớn hơn 0.", null);
         }
 
+        var shares = await db.RoomFinanceStudentShares
+            .Include(x => x.Invoice)
+            .Where(x => x.RoomFinanceRecordId == financeRecordId)
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+
+        if (shares.Count > 0)
+        {
+            var remainingPayment = Math.Min(
+                paidAmount,
+                shares.Sum(x => Math.Max(0, x.ExpectedAmount - x.PaidAmount)));
+
+            if (remainingPayment <= 0)
+            {
+                return (false, "Công nợ phòng này không còn số tiền cần thu.", null);
+            }
+
+            foreach (var share in shares)
+            {
+                if (remainingPayment <= 0)
+                {
+                    break;
+                }
+
+                var shareRemaining = Math.Max(0, share.ExpectedAmount - share.PaidAmount);
+                if (shareRemaining <= 0)
+                {
+                    continue;
+                }
+
+                var amountForShare = Math.Min(shareRemaining, remainingPayment);
+                share.PaidAmount = Math.Min(share.ExpectedAmount, share.PaidAmount + amountForShare);
+                share.PaidDate = paidDate;
+                share.PaymentMethod = paymentMethod.Trim();
+                share.Note = string.IsNullOrWhiteSpace(paymentNote)
+                    ? share.Note
+                    : paymentNote.Trim();
+                share.Status = share.PaidAmount >= share.ExpectedAmount ? "Paid" : "PartiallyPaid";
+                share.UpdatedAt = DateTime.UtcNow;
+
+                if (share.Invoice is not null)
+                {
+                    share.Invoice.Status = share.Status;
+                    share.Invoice.PaidDate = share.Status == "Paid" ? paidDate : null;
+                    share.Invoice.UpdatedAt = DateTime.UtcNow;
+                }
+
+                remainingPayment -= amountForShare;
+            }
+
+            record.PaymentMethod = paymentMethod.Trim();
+            record.PaymentNote = paymentNote.Trim();
+            record.RecordedBy = recordedBy.Trim();
+            await UpdateRoomFinanceFromSharesAsync(db, financeRecordId, paidDate);
+            return (true, null, record);
+        }
+
         record.PaidAmount = Math.Min(record.Total, record.PaidAmount + paidAmount);
-        record.PaidDate = paidDate;
+        record.PaidDate = record.PaidAmount >= record.Total && record.Total > 0 ? paidDate : null;
         record.PaymentMethod = paymentMethod.Trim();
         record.PaymentNote = paymentNote.Trim();
         record.RecordedBy = recordedBy.Trim();
-        record.Status = ResolveFinanceStatus(record.PaidAmount, record.Total, record.DueDate, record.PaidDate);
+        record.Status = ResolveFinanceStatus(record.PaidAmount, record.Total, record.DueDate, record.PaidDate ?? paidDate);
         record.UpdatedAt = DateTime.UtcNow;
 
         return (true, null, record);
@@ -466,6 +523,19 @@ public static class DormitoryWorkflowService
             : null;
         record.Status = ResolveFinanceStatus(record.PaidAmount, record.Total, record.DueDate, record.PaidDate ?? paidDate);
         record.UpdatedAt = DateTime.UtcNow;
+    }
+
+    public static async Task ReconcileRoomFinanceRecordsFromSharesAsync(AppDbContext db)
+    {
+        var recordIds = await db.RoomFinanceStudentShares
+            .Select(x => x.RoomFinanceRecordId)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var recordId in recordIds)
+        {
+            await UpdateRoomFinanceFromSharesAsync(db, recordId);
+        }
     }
 
     private static async Task<(bool Success, string? Message)> ValidateRoomAssignmentAsync(AppDbContext db, Students student, Rooms room)

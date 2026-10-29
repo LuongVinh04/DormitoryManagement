@@ -41,6 +41,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var waitingStudents = students.Count(x => x.Status is "Waiting" or "Pending");
         var activeContracts = contracts.Count(x => x.Status == "Active" && x.StartDate.Date <= DateTime.Today && x.EndDate.Date >= DateTime.Today);
         var expiringContracts = contracts.Count(x => x.EndDate <= DateTime.Today.AddDays(45) && x.EndDate >= DateTime.Today && x.Status == "Active");
+        var expiringContracts7Days = contracts.Count(x => x.EndDate.Date <= DateTime.Today.AddDays(7) && x.EndDate.Date >= DateTime.Today && x.Status == "Active");
+        var expiredContracts = contracts.Count(x => x.EndDate.Date < DateTime.Today || x.Status == "Expired" || x.Status == "Cancelled");
         var unpaidInvoices = financeRecords.Count > 0
             ? financeRecords.Count(x => x.Status != "Paid")
             : allInvoices.Count(x => x.Status != "Paid");
@@ -128,10 +130,10 @@ public class DashboardController(AppDbContext db) : ControllerBase
             },
             new
             {
-                level = expiringContracts > 0 ? "medium" : "low",
+                level = expiringContracts7Days > 0 ? "high" : expiringContracts > 0 ? "medium" : "low",
                 title = "Hợp đồng sắp hết hạn",
-                value = expiringContracts,
-                description = "Theo dõi gia hạn hoặc thanh lý hợp đồng."
+                value = expiringContracts7Days,
+                description = "Cảnh báo đỏ cho hợp đồng còn tối đa 7 ngày."
             }
         };
 
@@ -216,6 +218,24 @@ public class DashboardController(AppDbContext db) : ControllerBase
             });
         }
 
+        if (expiringContracts7Days > 0)
+        {
+            notifications.Add(new
+            {
+                id = "contracts-expiring-7-days",
+                type = "contracts",
+                severity = "danger",
+                title = "Hợp đồng sắp hết hạn",
+                description = $"Có {expiringContracts7Days} hợp đồng còn tối đa 7 ngày hiệu lực.",
+                count = expiringContracts7Days,
+                amount = (decimal?)null,
+                route = "/students",
+                panelKey = "students-contracts",
+                panelId = "panel-students-contracts",
+                actionLabel = "Đi tới danh sách hợp đồng"
+            });
+        }
+
         return Ok(new
         {
             summary = new
@@ -228,6 +248,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
                 waitingStudents,
                 activeContracts,
                 expiringContracts,
+                expiringContracts7Days,
+                expiredContracts,
                 unpaidInvoices,
                 overdueInvoices,
                 activeUsers,

@@ -3,6 +3,7 @@ using Dormitory.Models.Entities;
 using DormitoryManagement.Models;
 using DormitoryManagement.Services.Facilities;
 using DormitoryManagement.Services.Operations;
+using DormitoryManagement.Services.Realtime;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,9 @@ namespace DormitoryManagement.Controllers.Facilities;
 
 [ApiController]
 [Route("api/facilities")]
-public class FacilitiesController(AppDbContext db) : ControllerBase
+public class FacilitiesController(
+    AppDbContext db,
+    RealtimeBroadcastService realtime) : ControllerBase
 {
     [HttpGet("buildings")]
     public async Task<IActionResult> GetBuildings()
@@ -317,6 +320,13 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
+        await realtime.BroadcastRoomAllocationChangedAsync(
+            roomId,
+            request.StudentId,
+            "room-assign",
+            "Phan bo phong da thay doi");
+
+        await realtime.BroadcastDashboardChangedAsync();
         return Ok(new { message = "Đã xếp sinh viên vào phòng thành công." });
     }
 
@@ -336,6 +346,14 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
+
+        await realtime.BroadcastRoomAllocationChangedAsync(
+            request.ToRoomId,
+            request.StudentId,
+            "room-transfer",
+            "Phân bổ phòng đã thay đổi");
+
+        await realtime.BroadcastDashboardChangedAsync();
         return Ok(new { message = "Đã chuyển phòng cho sinh viên." });
     }
 
@@ -355,6 +373,14 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync();
+
+        await realtime.BroadcastRoomAllocationChangedAsync(
+            roomId,
+            request.StudentId,
+            "room-remove",
+            "Phân bổ phòng đã thay đổi");
+
+        await realtime.BroadcastDashboardChangedAsync();
         return Ok(new { message = "Đã trả phòng cho sinh viên." });
     }
 

@@ -21,6 +21,8 @@ const INITIAL_DATA = {
   roomFeeProfiles: [],
   roomFinances: [],
   invoices: [],
+  violations: [],
+  maintenanceRequests: [],
   roles: [],
   users: [],
 };
@@ -157,6 +159,35 @@ export function useDormitoryData() {
     }
   }
 
+  function receiveRealtimeNotification(notification) {
+    if (!notification) return;
+
+    setNotifications((current) => {
+      const nextNotification = {
+        id: notification.id ?? `realtime-${Date.now()}`,
+        ...notification,
+      };
+
+      return [nextNotification, ...current.filter((item) => item.id !== nextNotification.id)].slice(0, 20);
+    });
+
+    setNotice(notification.description || notification.title || "Có thông báo mới từ hệ thống.");
+  }
+
+  function updateDashboardSummary(summary) {
+    if (!summary) return;
+
+    setDashboard((current) => current
+      ? {
+          ...current,
+          summary: {
+            ...current.summary,
+            ...summary,
+          },
+        }
+      : current);
+  }
+
   function openCreate(entityKey) {
     const defaults = {};
     ENTITY_CONFIGS[entityKey].fields.forEach((field) => {
@@ -217,6 +248,24 @@ export function useDormitoryData() {
       defaults.accountPassword = "";
     }
 
+    if (entityKey === "violations") {
+      defaults.violationType = "Noise";
+      defaults.violationDate = formatDateInput(new Date().toISOString());
+      defaults.fineAmount = 0;
+      defaults.trainingPointDeduction = 0;
+      defaults.status = "Pending";
+      defaults.handledBy = "";
+      defaults.note = "";
+    }
+
+    if (entityKey === "maintenanceRequests") {
+      defaults.equipmentType = "Fan";
+      defaults.otherEquipmentName = "";
+      defaults.status = "Submitted";
+      defaults.technicianName = "";
+      defaults.adminNote = "";
+    }
+
     setFormErrors({});
     setModal({ entityKey, mode: "create", id: null, values: defaults });
   }
@@ -270,6 +319,18 @@ export function useDormitoryData() {
         }
       }
 
+      if (current.entityKey === "rooms" && name === "buildingId") {
+        const selectedZone = lookups.roomZones.find(
+          (item) => String(item.id) === String(nextValues.roomZoneId),
+        );
+        if (
+          selectedZone?.buildingId &&
+          String(selectedZone.buildingId) !== String(value)
+        ) {
+          nextValues.roomZoneId = "";
+        }
+      }
+
       if (current.entityKey === "utilities" && name === "roomId") {
         const profile = data.roomFeeProfiles.find(
           (item) => String(item.roomId) === String(value),
@@ -316,6 +377,14 @@ export function useDormitoryData() {
             }
           }
         }
+      }
+
+      if (
+        current.entityKey === "maintenanceRequests" &&
+        name === "equipmentType" &&
+        value !== "Other"
+      ) {
+        nextValues.otherEquipmentName = "";
       }
 
       return { ...current, values: nextValues };
@@ -447,6 +516,7 @@ export function useDormitoryData() {
     notice,
     openCreate,
     openEdit,
+    receiveRealtimeNotification,
     refreshData,
     roomActions,
     roomOverview,
@@ -458,6 +528,7 @@ export function useDormitoryData() {
     setRoomActions,
     setSelectedRoomId,
     updateModalField,
+    updateDashboardSummary,
   };
 }
 

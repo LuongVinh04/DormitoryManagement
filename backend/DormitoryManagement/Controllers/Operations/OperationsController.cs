@@ -171,9 +171,9 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
             return Conflict(new { message = "Trung ma hop dong" });
         }
 
-        if (await db.Contracts.AnyAsync(x => x.StudentId == request.StudentId))
+        if (await HasOverlappingActiveContractAsync(request.StudentId, request.StartDate, request.EndDate))
         {
-            return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
+            return Conflict(new { message = "Sinh viên đã có hợp đồng hiệu lực trong khoảng thời gian này." });
         }
 
         var student = await db.Students.FindAsync(request.StudentId);
@@ -235,9 +235,9 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
             return Conflict(new { message = "Trung ma hop dong" });
         }
 
-        if (await db.Contracts.AnyAsync(x => x.Id != id && x.StudentId == request.StudentId))
+        if (await HasOverlappingActiveContractAsync(request.StudentId, request.StartDate, request.EndDate, id))
         {
-            return Conflict(new { message = "Sinh vien da co hop dong luu tru" });
+            return Conflict(new { message = "Sinh viên đã có hợp đồng hiệu lực trong khoảng thời gian này." });
         }
 
         var contractStudent = await db.Students.FindAsync(request.StudentId);
@@ -285,6 +285,15 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     {
         var entity = await db.Contracts.FindAsync(id);
         if (entity is null) return NotFound();
+
+        if (entity.Status == "Active")
+        {
+            var studentInRoom = await db.Students.AnyAsync(x => x.Id == entity.StudentId && x.RoomId != null);
+            if (studentInRoom)
+            {
+                return BadRequest(new { message = "Cần trả phòng cho sinh viên trước khi xóa hợp đồng hiệu lực." });
+            }
+        }
 
         db.Contracts.Remove(entity);
         await db.SaveChangesAsync();
@@ -543,26 +552,29 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     [HttpGet("room-finances/summary")]
     public async Task<IActionResult> GetRoomFinanceSummary()
     {
-        var currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         var records = await db.RoomFinanceRecords
             .Include(x => x.Room)
-            .Where(x => x.BillingMonth.Year == currentMonth.Year && x.BillingMonth.Month == currentMonth.Month)
-            .OrderBy(x => x.Room!.RoomNumber)
+            .OrderByDescending(x => x.BillingMonth)
+            .ThenBy(x => x.Room!.RoomNumber)
             .ToListAsync();
 
         var totalExpected = records.Sum(x => x.Total);
         var collected = records.Sum(x => x.PaidAmount);
         var outstanding = totalExpected - collected;
+        var latestBillingMonth = records
+            .OrderByDescending(x => x.BillingMonth)
+            .Select(x => (DateTime?)x.BillingMonth)
+            .FirstOrDefault();
 
         return Ok(new
         {
-            billingMonth = currentMonth,
+            billingMonth = latestBillingMonth,
             totalExpected,
             collected,
             outstanding,
             paidRooms = records.Count(x => x.Status == "Paid"),
             partialRooms = records.Count(x => x.Status == "PartiallyPaid"),
-            unpaidRooms = records.Count(x => x.Status == "Unpaid"),
+            unpaidRooms = records.Count(x => x.Status != "Paid"),
             lateRooms = records.Count(x => x.Status == "Late"),
             roomStatuses = records.Select(x => new
             {
@@ -685,6 +697,7 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         entity.PaymentNote = request.PaymentNote?.Trim() ?? string.Empty;
         entity.RecordedBy = request.RecordedBy?.Trim() ?? string.Empty;
         entity.Status = DormitoryWorkflowService.ResolveFinanceStatus(entity.PaidAmount, entity.Total, entity.DueDate, entity.PaidDate);
+        entity.PaidDate = entity.Status == "Paid" ? entity.PaidDate ?? DateTime.Today : null;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
@@ -822,7 +835,9 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         entity.Status = request.Status.Trim();
         entity.BillingMonth = request.BillingMonth;
         entity.DueDate = request.DueDate;
-        entity.PaidDate = request.PaidDate;
+        entity.PaidDate = entity.Status == "Paid"
+            ? request.PaidDate ?? DateTime.Today
+            : null;
         entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(entity);
@@ -1189,6 +1204,23 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
              message.Contains("duplicate", StringComparison.OrdinalIgnoreCase));
     }
 
+    private async Task<bool> HasOverlappingActiveContractAsync(
+        int studentId,
+        DateTime startDate,
+        DateTime endDate,
+        int? excludedContractId = null)
+    {
+        var start = startDate.Date;
+        var end = endDate.Date;
+
+        return await db.Contracts.AnyAsync(x =>
+            x.StudentId == studentId &&
+            x.Status == "Active" &&
+            (!excludedContractId.HasValue || x.Id != excludedContractId.Value) &&
+            x.StartDate.Date <= end &&
+            x.EndDate.Date >= start);
+    }
+
     [HttpDelete("room-finance-shares/{shareId:int}")]
     public async Task<IActionResult> DeleteStudentShare(int shareId)
     {
@@ -1233,6 +1265,359 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         return Ok(new { message = $"Đã xóa {shares.Count} phần chia." });
     }
 
+    [HttpGet("violations")]
+    public async Task<IActionResult> GetViolations()
+    {
+        var data = await db.ViolationRecords
+            .Include(x => x.Student)
+            .Include(x => x.Room)
+            .ThenInclude(x => x!.Building)
+            .OrderByDescending(x => x.ViolationDate)
+            .Select(x => new
+            {
+                x.Id,
+                x.StudentId,
+                studentCode = x.Student!.StudentCode,
+                studentName = x.Student.Name,
+                x.RoomId,
+                roomNumber = x.Room != null ? x.Room.RoomNumber : string.Empty,
+                buildingName = x.Room != null && x.Room.Building != null ? x.Room.Building.Name : string.Empty,
+                x.ViolationType,
+                x.Description,
+                x.FineAmount,
+                x.TrainingPointDeduction,
+                x.ViolationDate,
+                x.Status,
+                x.HandledBy,
+                x.Note,
+                x.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(data);
+    }
+
+    [HttpPost("violations")]
+    public async Task<IActionResult> CreateViolation([FromBody] ViolationRecordRequest request)
+    {
+        var student = await db.Students.FindAsync(request.StudentId);
+        if (student is null)
+        {
+            return BadRequest(new { message = "Khong tim thay sinh vien." });
+        }
+
+        var roomId = request.RoomId ?? student.RoomId;
+        if (roomId.HasValue && !await db.Rooms.AnyAsync(x => x.Id == roomId.Value))
+        {
+            return BadRequest(new { message = "Khong tim thay phong." });
+        }
+
+        var entity = new ViolationRecord
+        {
+            StudentId = request.StudentId,
+            RoomId = roomId,
+            ViolationType = NormalizeViolationType(request.ViolationType),
+            Description = request.Description.Trim(),
+            FineAmount = request.FineAmount,
+            TrainingPointDeduction = request.TrainingPointDeduction,
+            ViolationDate = request.ViolationDate == default ? DateTime.Today : request.ViolationDate,
+            Status = NormalizeViolationStatus(request.Status),
+            HandledBy = request.HandledBy.Trim(),
+            Note = request.Note.Trim()
+        };
+
+        db.ViolationRecords.Add(entity);
+        await db.SaveChangesAsync();
+        return Ok(entity);
+    }
+
+    [HttpPut("violations/{id:int}")]
+    public async Task<IActionResult> UpdateViolation(int id, [FromBody] ViolationRecordRequest request)
+    {
+        var entity = await db.ViolationRecords.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        if (!await db.Students.AnyAsync(x => x.Id == request.StudentId))
+        {
+            return BadRequest(new { message = "Khong tim thay sinh vien." });
+        }
+
+        if (request.RoomId.HasValue && !await db.Rooms.AnyAsync(x => x.Id == request.RoomId.Value))
+        {
+            return BadRequest(new { message = "Khong tim thay phong." });
+        }
+
+        entity.StudentId = request.StudentId;
+        entity.RoomId = request.RoomId;
+        entity.ViolationType = NormalizeViolationType(request.ViolationType);
+        entity.Description = request.Description.Trim();
+        entity.FineAmount = request.FineAmount;
+        entity.TrainingPointDeduction = request.TrainingPointDeduction;
+        entity.ViolationDate = request.ViolationDate == default ? entity.ViolationDate : request.ViolationDate;
+        entity.Status = NormalizeViolationStatus(request.Status);
+        entity.HandledBy = request.HandledBy.Trim();
+        entity.Note = request.Note.Trim();
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(entity);
+    }
+
+    [HttpPost("violations/{id:int}/confirm")]
+    public async Task<IActionResult> ConfirmViolation(int id, [FromBody] ViolationDecisionRequest request)
+    {
+        var entity = await db.ViolationRecords.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        entity.Status = "Confirmed";
+        entity.HandledBy = request.HandledBy.Trim();
+        entity.Note = string.IsNullOrWhiteSpace(request.Note) ? entity.Note : request.Note.Trim();
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da xac nhan vi pham." });
+    }
+
+    [HttpPost("violations/{id:int}/mark-paid")]
+    public async Task<IActionResult> MarkViolationPaid(int id, [FromBody] ViolationDecisionRequest request)
+    {
+        var entity = await db.ViolationRecords.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        if (entity.Status == "Cancelled")
+        {
+            return BadRequest(new { message = "Khong the thu phat bien ban da huy." });
+        }
+
+        entity.Status = "Paid";
+        entity.HandledBy = string.IsNullOrWhiteSpace(request.HandledBy) ? entity.HandledBy : request.HandledBy.Trim();
+        entity.Note = string.IsNullOrWhiteSpace(request.Note) ? entity.Note : request.Note.Trim();
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da ghi nhan nop phat." });
+    }
+
+    [HttpPost("violations/{id:int}/cancel")]
+    public async Task<IActionResult> CancelViolation(int id, [FromBody] ViolationDecisionRequest request)
+    {
+        var entity = await db.ViolationRecords.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        entity.Status = "Cancelled";
+        entity.HandledBy = string.IsNullOrWhiteSpace(request.HandledBy) ? entity.HandledBy : request.HandledBy.Trim();
+        entity.Note = string.IsNullOrWhiteSpace(request.Note) ? "Huy bien ban vi pham." : request.Note.Trim();
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da huy bien ban vi pham." });
+    }
+
+    [HttpDelete("violations/{id:int}")]
+    public async Task<IActionResult> DeleteViolation(int id)
+    {
+        var entity = await db.ViolationRecords.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        db.ViolationRecords.Remove(entity);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("maintenance-requests")]
+    public async Task<IActionResult> GetMaintenanceRequests()
+    {
+        var data = await db.MaintenanceRequests
+            .Include(x => x.Student)
+            .Include(x => x.Room)
+            .ThenInclude(x => x!.Building)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new
+            {
+                x.Id,
+                x.StudentId,
+                studentCode = x.Student!.StudentCode,
+                studentName = x.Student.Name,
+                x.RoomId,
+                roomNumber = x.Room!.RoomNumber,
+                buildingName = x.Room.Building != null ? x.Room.Building.Name : string.Empty,
+                x.EquipmentType,
+                x.OtherEquipmentName,
+                equipmentName = x.EquipmentType == "Other" && x.OtherEquipmentName != string.Empty ? x.OtherEquipmentName : x.EquipmentType,
+                x.Description,
+                x.Status,
+                x.AdminNote,
+                x.TechnicianName,
+                x.ApprovedAt,
+                x.StartedAt,
+                x.CompletedAt,
+                x.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(data);
+    }
+
+    [HttpPost("maintenance-requests")]
+    public async Task<IActionResult> CreateMaintenanceRequest([FromBody] MaintenanceRequestRequest request)
+    {
+        if (!await db.Students.AnyAsync(x => x.Id == request.StudentId))
+        {
+            return BadRequest(new { message = "Khong tim thay sinh vien." });
+        }
+
+        if (!await db.Rooms.AnyAsync(x => x.Id == request.RoomId))
+        {
+            return BadRequest(new { message = "Khong tim thay phong." });
+        }
+
+        var equipmentType = NormalizeEquipmentType(request.EquipmentType);
+        if (equipmentType == "Other" && string.IsNullOrWhiteSpace(request.OtherEquipmentName))
+        {
+            return BadRequest(new { message = "Vui long nhap ten thiet bi khac." });
+        }
+
+        var entity = new MaintenanceRequest
+        {
+            StudentId = request.StudentId,
+            RoomId = request.RoomId,
+            EquipmentType = equipmentType,
+            OtherEquipmentName = equipmentType == "Other" ? request.OtherEquipmentName.Trim() : string.Empty,
+            Description = request.Description.Trim(),
+            Status = NormalizeMaintenanceStatus(request.Status),
+            AdminNote = request.AdminNote.Trim(),
+            TechnicianName = request.TechnicianName.Trim()
+        };
+
+        ApplyMaintenanceTimestamps(entity, entity.Status);
+        db.MaintenanceRequests.Add(entity);
+        await db.SaveChangesAsync();
+        return Ok(entity);
+    }
+
+    [HttpPut("maintenance-requests/{id:int}")]
+    public async Task<IActionResult> UpdateMaintenanceRequest(int id, [FromBody] MaintenanceRequestRequest request)
+    {
+        var entity = await db.MaintenanceRequests.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        if (!await db.Students.AnyAsync(x => x.Id == request.StudentId))
+        {
+            return BadRequest(new { message = "Khong tim thay sinh vien." });
+        }
+
+        if (!await db.Rooms.AnyAsync(x => x.Id == request.RoomId))
+        {
+            return BadRequest(new { message = "Khong tim thay phong." });
+        }
+
+        var nextStatus = NormalizeMaintenanceStatus(request.Status);
+        var equipmentType = NormalizeEquipmentType(request.EquipmentType);
+        if (equipmentType == "Other" && string.IsNullOrWhiteSpace(request.OtherEquipmentName))
+        {
+            return BadRequest(new { message = "Vui long nhap ten thiet bi khac." });
+        }
+
+        entity.StudentId = request.StudentId;
+        entity.RoomId = request.RoomId;
+        entity.EquipmentType = equipmentType;
+        entity.OtherEquipmentName = entity.EquipmentType == "Other" ? request.OtherEquipmentName.Trim() : string.Empty;
+        entity.Description = request.Description.Trim();
+        entity.Status = nextStatus;
+        entity.AdminNote = request.AdminNote.Trim();
+        entity.TechnicianName = request.TechnicianName.Trim();
+        entity.UpdatedAt = DateTime.UtcNow;
+        ApplyMaintenanceTimestamps(entity, nextStatus);
+
+        await db.SaveChangesAsync();
+        return Ok(entity);
+    }
+
+    [HttpPost("maintenance-requests/{id:int}/approve")]
+    public async Task<IActionResult> ApproveMaintenanceRequest(int id, [FromBody] MaintenanceDecisionRequest request)
+    {
+        var entity = await db.MaintenanceRequests.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        entity.Status = "Approved";
+        entity.AdminNote = request.AdminNote.Trim();
+        entity.TechnicianName = request.TechnicianName.Trim();
+        entity.ApprovedAt ??= DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da duyet yeu cau bao tri." });
+    }
+
+    [HttpPost("maintenance-requests/{id:int}/reject")]
+    public async Task<IActionResult> RejectMaintenanceRequest(int id, [FromBody] MaintenanceDecisionRequest request)
+    {
+        var entity = await db.MaintenanceRequests.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        entity.Status = "Rejected";
+        entity.AdminNote = string.IsNullOrWhiteSpace(request.AdminNote) ? "Tu choi yeu cau bao tri." : request.AdminNote.Trim();
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da tu choi yeu cau bao tri." });
+    }
+
+    [HttpPost("maintenance-requests/{id:int}/start")]
+    public async Task<IActionResult> StartMaintenanceRequest(int id, [FromBody] MaintenanceDecisionRequest request)
+    {
+        var entity = await db.MaintenanceRequests.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        if (entity.Status is not ("Approved" or "InProgress"))
+        {
+            return BadRequest(new { message = "Can duyet yeu cau truoc khi xu ly." });
+        }
+
+        entity.Status = "InProgress";
+        entity.TechnicianName = string.IsNullOrWhiteSpace(request.TechnicianName) ? entity.TechnicianName : request.TechnicianName.Trim();
+        entity.AdminNote = string.IsNullOrWhiteSpace(request.AdminNote) ? entity.AdminNote : request.AdminNote.Trim();
+        entity.StartedAt ??= DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da chuyen yeu cau sang dang xu ly." });
+    }
+
+    [HttpPost("maintenance-requests/{id:int}/done")]
+    public async Task<IActionResult> CompleteMaintenanceRequest(int id, [FromBody] MaintenanceDecisionRequest request)
+    {
+        var entity = await db.MaintenanceRequests.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        if (entity.Status is "Rejected")
+        {
+            return BadRequest(new { message = "Khong the hoan tat yeu cau da tu choi." });
+        }
+
+        entity.Status = "Done";
+        entity.TechnicianName = string.IsNullOrWhiteSpace(request.TechnicianName) ? entity.TechnicianName : request.TechnicianName.Trim();
+        entity.AdminNote = string.IsNullOrWhiteSpace(request.AdminNote) ? entity.AdminNote : request.AdminNote.Trim();
+        entity.ApprovedAt ??= DateTime.UtcNow;
+        entity.StartedAt ??= DateTime.UtcNow;
+        entity.CompletedAt ??= DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        return Ok(new { message = "Da hoan tat yeu cau bao tri." });
+    }
+
+    [HttpDelete("maintenance-requests/{id:int}")]
+    public async Task<IActionResult> DeleteMaintenanceRequest(int id)
+    {
+        var entity = await db.MaintenanceRequests.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        db.MaintenanceRequests.Remove(entity);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private static List<decimal> SplitAmount(decimal amount, int count)
     {
         if (count <= 0)
@@ -1254,5 +1639,55 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     private static string BuildRoomFinanceInvoiceCode(int roomFinanceRecordId, string studentCode)
     {
         return $"RF-{roomFinanceRecordId:D5}-{studentCode}-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+    }
+
+    private static string NormalizeViolationType(string? value)
+    {
+        var normalized = value?.Trim();
+        return normalized is "Noise" or "Smoking" or "PropertyDamage"
+            ? normalized
+            : "Noise";
+    }
+
+    private static string NormalizeViolationStatus(string? value)
+    {
+        var normalized = value?.Trim();
+        return normalized is "Pending" or "Confirmed" or "Cancelled" or "Paid"
+            ? normalized
+            : "Pending";
+    }
+
+    private static string NormalizeEquipmentType(string? value)
+    {
+        var normalized = value?.Trim();
+        return normalized is "Fan" or "AirConditioner" or "Light" or "Other"
+            ? normalized
+            : "Fan";
+    }
+
+    private static string NormalizeMaintenanceStatus(string? value)
+    {
+        var normalized = value?.Trim();
+        return normalized is "Submitted" or "Approved" or "Rejected" or "InProgress" or "Done"
+            ? normalized
+            : "Submitted";
+    }
+
+    private static void ApplyMaintenanceTimestamps(MaintenanceRequest entity, string status)
+    {
+        if (status is "Approved" or "InProgress" or "Done")
+        {
+            entity.ApprovedAt ??= DateTime.UtcNow;
+        }
+
+        if (status is "InProgress" or "Done")
+        {
+            entity.StartedAt ??= DateTime.UtcNow;
+        }
+
+        if (status == "Done")
+        {
+            entity.CompletedAt ??= DateTime.UtcNow;
+        }
     }
 }

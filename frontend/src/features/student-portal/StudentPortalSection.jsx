@@ -1,252 +1,449 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import { apiFetch } from '../../helpers'
-import { useAuth } from '../../hooks/useAuth'
+﻿import { useEffect, useRef, useState } from "react";
+import { apiFetch, downloadBlob, openBlobInNewTab } from "../../helpers";
+import { useAuth } from "../../hooks/useAuth";
 
-const emptyValue = '—'
+const emptyValue = "—";
 
 function statusLabel(status) {
-  if (status === 'Paid') return 'Đã nộp'
-  if (status === 'PartiallyPaid') return 'Một phần'
-  if (status === 'Approved') return 'Đã duyệt'
-  if (status === 'Rejected') return 'Từ chối'
-  if (status === 'Pending') return 'Chờ duyệt'
-  if (status === 'Unpaid') return 'Chưa nộp'
-  return status || emptyValue
+  if (status === "Paid") return "Đã nộp";
+  if (status === "PartiallyPaid") return "Một phần";
+  if (status === "Approved") return "Đã duyệt";
+  if (status === "Rejected") return "Từ chối";
+  if (status === "Pending") return "Chờ duyệt";
+  if (status === "Unpaid") return "Chưa nộp";
+  if (status === "Submitted") return "Đã gửi";
+  if (status === "InProgress") return "Đang xử lý";
+  if (status === "Done") return "Hoàn tất";
+  if (status === "Confirmed") return "Đã xác nhận";
+  if (status === "Cancelled") return "Đã hủy";
+  return status || emptyValue;
+}
+
+function equipmentLabel(type) {
+  if (type === "Fan") return "Quạt";
+  if (type === "AirConditioner") return "Điều hòa";
+  if (type === "Light") return "Bóng đèn";
+  if (type === "Other") return "Khác";
+  return type || emptyValue;
+}
+
+function violationLabel(type) {
+  if (type === "Noise") return "Gây ồn";
+  if (type === "Smoking") return "Hút thuốc";
+  if (type === "PropertyDamage") return "Phá hoại tài sản";
+  return type || emptyValue;
+}
+
+function normalizeListPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.value)) return payload.value;
+  return [];
 }
 
 export function StudentPortalSection() {
-  const { user, logout } = useAuth()
-  const [profile, setProfile] = useState(null)
-  const [room, setRoom] = useState(null)
-  const [finance, setFinance] = useState(null)
-  const [transfers, setTransfers] = useState([])
-  const [messages, setMessages] = useState([])
-  const [managers, setManagers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ phone: '', email: '', address: '', emergencyContact: '' })
-  const [transferForm, setTransferForm] = useState({ desiredRoomId: '', reason: '' })
-  const [chatForm, setChatForm] = useState({ receiverId: '', content: '' })
-  const [rooms, setRooms] = useState([])
-  const [payingShareId, setPayingShareId] = useState(null)
-  const [paymentError, setPaymentError] = useState('')
-  const [paymentNotice, setPaymentNotice] = useState('')
-  const [paymentDialog, setPaymentDialog] = useState(null)
-  const chatEndRef = useRef(null)
+  const { user, logout } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [room, setRoom] = useState(null);
+  const [finance, setFinance] = useState(null);
+  const [contracts, setContracts] = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
+  const [violations, setViolations] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    phone: "",
+    email: "",
+    address: "",
+    emergencyContact: "",
+  });
+  const [transferForm, setTransferForm] = useState({
+    desiredRoomId: "",
+    reason: "",
+  });
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    equipmentType: "Fan",
+    otherEquipmentName: "",
+    description: "",
+  });
+  const [chatForm, setChatForm] = useState({ receiverId: "", content: "" });
+  const [rooms, setRooms] = useState([]);
+  const [payingShareId, setPayingShareId] = useState(null);
+  const [paymentError, setPaymentError] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState("");
+  const [paymentDialog, setPaymentDialog] = useState(null);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const paymentStatus = params.get('paymentStatus')
-    const message = params.get('message')
-    if (paymentStatus === 'success') {
-      setNotice(message || 'Thanh toán VNPay thành công.')
-      window.history.replaceState({}, '', window.location.pathname)
-    } else if (paymentStatus === 'failed') {
-      setError(message || 'Thanh toán VNPay chưa thành công.')
-      window.history.replaceState({}, '', window.location.pathname)
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("paymentStatus");
+    const message = params.get("message");
+
+    queueMicrotask(() => {
+      if (paymentStatus === "success") {
+        setNotice(message || "Thanh toán VNPay thành công.");
+        window.history.replaceState({}, "", window.location.pathname);
+      } else if (paymentStatus === "failed") {
+        setError(message || "Thanh toán VNPay chưa thành công.");
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    loadPortalData();
+  }, []);
+
+  useEffect(() => {
+    function refreshPortalOnFocus() {
+      if (document.visibilityState === "visible") {
+        loadPortalData();
+      }
     }
-    loadPortalData()
-  }, [])
+
+    document.addEventListener("visibilitychange", refreshPortalOnFocus);
+    window.addEventListener("focus", loadPortalData);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshPortalOnFocus);
+      window.removeEventListener("focus", loadPortalData);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!error && !notice) return
+    if (!error && !notice) return;
     const timeout = setTimeout(() => {
-      setError('')
-      setNotice('')
-    }, 4200)
-    return () => clearTimeout(timeout)
-  }, [error, notice])
+      setError("");
+      setNotice("");
+    }, 4200);
+    return () => clearTimeout(timeout);
+  }, [error, notice]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      loadMessagesOnly(true)
-    }, 3500)
+      loadMessagesOnly(true);
+    }, 3500);
 
-    return () => window.clearInterval(intervalId)
-  }, [])
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages.length])
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
 
   async function loadPortalData() {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
-      const [profileRes, roomRes, financeRes, transferRes, msgRes, mgrRes, roomsRes] = await Promise.all([
-        apiFetch('/api/student-portal/me'),
-        apiFetch('/api/student-portal/room'),
-        apiFetch('/api/student-portal/finance'),
-        apiFetch('/api/student-portal/transfer-requests'),
-        apiFetch('/api/student-portal/messages'),
-        apiFetch('/api/student-portal/managers'),
-        apiFetch('/api/facilities/rooms'),
-      ])
+      const profileRes = await apiFetch("/api/student-portal/me", {
+        cache: "no-store",
+      });
+      if (profileRes.ok) setProfile(await profileRes.json());
+      await loadViolationsOnly(true);
 
-      if (profileRes.ok) setProfile(await profileRes.json())
-      if (roomRes.ok) setRoom(await roomRes.json())
-      if (financeRes.ok) setFinance(await financeRes.json())
-      if (transferRes.ok) setTransfers(await transferRes.json())
-      if (msgRes.ok) setMessages(await msgRes.json())
-      if (mgrRes.ok) setManagers(await mgrRes.json())
-      if (roomsRes.ok) setRooms(await roomsRes.json())
+      const [
+        roomRes,
+        financeRes,
+        contractRes,
+        transferRes,
+        maintenanceRes,
+        msgRes,
+        mgrRes,
+        roomsRes,
+      ] = await Promise.all([
+        apiFetch("/api/student-portal/room"),
+        apiFetch("/api/student-portal/finance"),
+        apiFetch("/api/student-portal/contracts"),
+        apiFetch("/api/student-portal/transfer-requests"),
+        apiFetch("/api/student-portal/maintenance-requests"),
+        apiFetch("/api/student-portal/messages"),
+        apiFetch("/api/student-portal/managers"),
+        apiFetch("/api/facilities/rooms"),
+      ]);
+
+      if (roomRes.ok) setRoom(await roomRes.json());
+      if (financeRes.ok) setFinance(await financeRes.json());
+      if (contractRes.ok) setContracts(await contractRes.json());
+      if (transferRes.ok) setTransfers(await transferRes.json());
+      if (maintenanceRes.ok) setMaintenanceRequests(await maintenanceRes.json());
+      if (msgRes.ok) setMessages(await msgRes.json());
+      if (mgrRes.ok) setManagers(await mgrRes.json());
+      if (roomsRes.ok) setRooms(await roomsRes.json());
     } catch (loadError) {
-      setError(loadError.message)
+      await loadViolationsOnly(true);
+      setError(loadError.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
+    }
+  }
+
+  async function loadViolationsOnly(silent = false) {
+    try {
+      const response = await apiFetch(
+        `/api/student-portal/violations?_=${Date.now()}`,
+        {
+          cache: "no-store",
+          skipGlobalLoading: true,
+        },
+      );
+      if (!response.ok) {
+        if (!silent) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.message || "Không tải được dữ liệu vi phạm.");
+        }
+        return;
+      }
+
+      setViolations(normalizeListPayload(await response.json()));
+    } catch (violationLoadError) {
+      if (!silent) {
+        setError(violationLoadError.message);
+      }
     }
   }
 
   async function loadMessagesOnly(silent = false) {
     try {
-      const response = await apiFetch('/api/student-portal/messages', { skipGlobalLoading: true })
+      const response = await apiFetch("/api/student-portal/messages", {
+        skipGlobalLoading: true,
+      });
       if (!response.ok) {
         if (!silent) {
-          const data = await response.json().catch(() => ({}))
-          throw new Error(data.message || 'Không tải được tin nhắn mới nhất.')
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.message || "Không tải được tin nhắn mới nhất.");
         }
-        return
+        return;
       }
 
-      setMessages(await response.json())
+      setMessages(await response.json());
     } catch (messageLoadError) {
       if (!silent) {
-        setError(messageLoadError.message)
+        setError(messageLoadError.message);
       }
     }
   }
 
   function startEdit() {
-    if (!profile?.student) return
-    const student = profile.student
+    if (!profile?.student) return;
+    const student = profile.student;
     setEditForm({
-      phone: student.phone || '',
-      email: student.email || '',
-      address: student.address || '',
-      emergencyContact: student.emergencyContact || '',
-    })
-    setEditing(true)
+      phone: student.phone || "",
+      email: student.email || "",
+      address: student.address || "",
+      emergencyContact: student.emergencyContact || "",
+    });
+    setEditing(true);
   }
 
   async function saveProfile() {
     try {
-      setError('')
-      const response = await apiFetch('/api/student-portal/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      setError("");
+      const response = await apiFetch("/api/student-portal/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
-      })
+      });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || 'Lỗi cập nhật.')
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Lỗi cập nhật.");
       }
 
-      setNotice('Đã lưu thông tin cá nhân.')
-      setEditing(false)
-      await loadPortalData()
+      setNotice("Đã lưu thông tin cá nhân.");
+      setEditing(false);
+      await loadPortalData();
     } catch (saveError) {
-      setError(saveError.message)
+      setError(saveError.message);
     }
   }
 
   async function submitTransfer() {
     if (!transferForm.desiredRoomId || !transferForm.reason.trim()) {
-      setError('Vui lòng chọn phòng và nhập lý do.')
-      return
+      setError("Vui lòng chọn phòng và nhập lý do.");
+      return;
     }
 
     try {
-      setError('')
-      const response = await apiFetch('/api/student-portal/transfer-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ desiredRoomId: Number(transferForm.desiredRoomId), reason: transferForm.reason }),
-      })
+      setError("");
+      const response = await apiFetch("/api/student-portal/transfer-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          desiredRoomId: Number(transferForm.desiredRoomId),
+          reason: transferForm.reason,
+        }),
+      });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || 'Lỗi gửi yêu cầu.')
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Lỗi gửi yêu cầu.");
       }
 
-      setNotice('Đã gửi yêu cầu chuyển phòng.')
-      setTransferForm({ desiredRoomId: '', reason: '' })
-      await loadPortalData()
+      setNotice("Đã gửi yêu cầu chuyển phòng.");
+      setTransferForm({ desiredRoomId: "", reason: "" });
+      await loadPortalData();
     } catch (transferError) {
-      setError(transferError.message)
+      setError(transferError.message);
+    }
+  }
+
+  async function submitMaintenanceRequest() {
+    if (!maintenanceForm.equipmentType || !maintenanceForm.description.trim()) {
+      setError("Vui lòng chọn thiết bị và nhập mô tả lỗi.");
+      return;
+    }
+
+    if (
+      maintenanceForm.equipmentType === "Other" &&
+      !maintenanceForm.otherEquipmentName.trim()
+    ) {
+      setError("Vui lòng nhập tên thiết bị khác.");
+      return;
+    }
+
+    try {
+      setError("");
+      const response = await apiFetch("/api/student-portal/maintenance-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(maintenanceForm),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Lỗi gửi yêu cầu bảo trì.");
+      }
+
+      setNotice("Đã gửi yêu cầu bảo trì thiết bị.");
+      setMaintenanceForm({ equipmentType: "Fan", otherEquipmentName: "", description: "" });
+      await loadPortalData();
+    } catch (maintenanceError) {
+      setError(maintenanceError.message);
     }
   }
 
   async function sendMessage() {
     if (!chatForm.receiverId || !chatForm.content.trim()) {
-      setError('Vui lòng chọn người nhận và nhập nội dung.')
-      return
+      setError("Vui lòng chọn người nhận và nhập nội dung.");
+      return;
     }
 
     try {
-      setError('')
-      const response = await apiFetch('/api/student-portal/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiverId: Number(chatForm.receiverId), content: chatForm.content }),
+      setError("");
+      const response = await apiFetch("/api/student-portal/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: Number(chatForm.receiverId),
+          content: chatForm.content,
+        }),
         skipGlobalLoading: true,
-      })
+      });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || 'Lỗi gửi tin nhắn.')
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Lỗi gửi tin nhắn.");
       }
 
-      setChatForm({ ...chatForm, content: '' })
-      await loadMessagesOnly()
+      setChatForm({ ...chatForm, content: "" });
+      await loadMessagesOnly();
     } catch (messageError) {
-      setError(messageError.message)
+      setError(messageError.message);
     }
   }
 
   async function payShareViaVnPay(share) {
     try {
-      setError('')
-      setPaymentError('')
-      setPaymentNotice('')
-      setPaymentDialog(null)
-      setPayingShareId(share.id)
-      const response = await apiFetch(`/api/student-portal/room-finance-shares/${share.id}/vnpay/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        skipGlobalLoading: true,
-      })
+      setError("");
+      setPaymentError("");
+      setPaymentNotice("");
+      setPaymentDialog(null);
+      setPayingShareId(share.id);
+      const response = await apiFetch(
+        `/api/student-portal/room-finance-shares/${share.id}/vnpay/create`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          skipGlobalLoading: true,
+        },
+      );
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || `Không tạo được thanh toán VNPay. Mã lỗi HTTP ${response.status}.`)
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          data.message ||
+            `Không tạo được thanh toán VNPay. Mã lỗi HTTP ${response.status}.`,
+        );
       }
 
-      const data = await response.json()
+      const data = await response.json();
       if (!data.paymentUrl) {
-        throw new Error('API không trả về link thanh toán VNPay.')
+        throw new Error("API không trả về link thanh toán VNPay.");
       }
 
-      setPaymentNotice('Đã tạo link thanh toán VNPay. Vui lòng mở cổng thanh toán để hoàn tất giao dịch.')
+      setPaymentNotice(
+        "Đã tạo link thanh toán VNPay. Vui lòng mở cổng thanh toán để hoàn tất giao dịch.",
+      );
       setPaymentDialog({
         url: data.paymentUrl,
-        share: { ...share, invoiceId: data.invoiceId, invoiceCode: data.invoiceCode ?? share.invoiceCode },
+        share: {
+          ...share,
+          invoiceId: data.invoiceId,
+          invoiceCode: data.invoiceCode ?? share.invoiceCode,
+        },
         amount: data.amount ?? share.remainingAmount,
         invoiceCode: data.invoiceCode ?? share.invoiceCode,
-      })
-      setPayingShareId(null)
+      });
+      setPayingShareId(null);
     } catch (payError) {
-      setPaymentError(payError.message)
-      setPayingShareId(null)
+      setPaymentError(payError.message);
+      setPayingShareId(null);
     }
   }
 
   function canPayShare(share) {
-    return share.status !== 'Paid' && Number(share.remainingAmount ?? 0) > 0
+    return share.status !== "Paid" && Number(share.remainingAmount ?? 0) > 0;
   }
 
-  const currencyFormat = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
-  const dateFormat = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const monthFormat = new Intl.DateTimeFormat('vi-VN', { month: '2-digit', year: 'numeric' })
-  const timeFormat = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  async function viewContract(contract) {
+    try {
+      await openBlobInNewTab(
+        contract.viewUrl,
+        contract.pdfFileName || `${contract.contractCode}.pdf`,
+      );
+    } catch (viewError) {
+      setError(viewError.message);
+    }
+  }
+
+  async function downloadContract(contract) {
+    try {
+      await downloadBlob(
+        contract.downloadUrl,
+        contract.pdfFileName || `${contract.contractCode}.pdf`,
+      );
+    } catch (downloadError) {
+      setError(downloadError.message);
+    }
+  }
+
+  const currencyFormat = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  });
+  const dateFormat = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const monthFormat = new Intl.DateTimeFormat("vi-VN", {
+    month: "2-digit",
+    year: "numeric",
+  });
+  const timeFormat = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   if (loading) {
     return (
@@ -255,10 +452,10 @@ export function StudentPortalSection() {
           <h1>Đang tải cổng sinh viên...</h1>
         </div>
       </div>
-    )
+    );
   }
 
-  const student = profile?.student
+  const student = profile?.student;
 
   return (
     <div className="student-portal-page">
@@ -266,11 +463,17 @@ export function StudentPortalSection() {
         <header className="student-portal-header">
           <div>
             <h1>Cổng Sinh Viên</h1>
-            <p>Xin chào, <strong>{user?.fullName || user?.username}</strong></p>
+            <p>
+              Xin chào, <strong>{user?.fullName || user?.username}</strong>
+            </p>
           </div>
           <div className="student-portal-actions">
-            <button className="secondary-button" onClick={loadPortalData}>Làm mới</button>
-            <button className="ghost-button danger" onClick={logout}>Đăng xuất</button>
+            <button className="secondary-button" onClick={loadPortalData}>
+              Làm mới
+            </button>
+            <button className="ghost-button danger" onClick={logout}>
+              Đăng xuất
+            </button>
           </div>
         </header>
 
@@ -281,31 +484,114 @@ export function StudentPortalSection() {
           <section className="student-portal-card">
             <div className="student-portal-card-header">
               <h2>Thông tin cá nhân</h2>
-              {!editing ? <button className="ghost-button" onClick={startEdit}>Chỉnh sửa</button> : null}
+              {!editing ? (
+                <button className="ghost-button" onClick={startEdit}>
+                  Chỉnh sửa
+                </button>
+              ) : null}
             </div>
             {student && !editing ? (
               <div className="student-portal-info">
-                <div className="info-row"><span>Mã SV</span><strong>{student.studentCode}</strong></div>
-                <div className="info-row"><span>Họ tên</span><strong>{student.name}</strong></div>
-                <div className="info-row"><span>Giới tính</span><strong>{student.gender}</strong></div>
-                <div className="info-row"><span>Ngày sinh</span><strong>{student.dateOfBirth ? dateFormat.format(new Date(student.dateOfBirth)) : emptyValue}</strong></div>
-                <div className="info-row"><span>Điện thoại</span><strong>{student.phone || emptyValue}</strong></div>
-                <div className="info-row"><span>Email</span><strong>{student.email || emptyValue}</strong></div>
-                <div className="info-row"><span>Khoa</span><strong>{student.faculty || emptyValue}</strong></div>
-                <div className="info-row"><span>Lớp</span><strong>{student.className || emptyValue}</strong></div>
-                <div className="info-row"><span>Địa chỉ</span><strong>{student.address || emptyValue}</strong></div>
-                <div className="info-row"><span>Liên hệ khẩn</span><strong>{student.emergencyContact || emptyValue}</strong></div>
-                <div className="info-row"><span>Trạng thái</span><strong>{student.status}</strong></div>
+                <div className="info-row">
+                  <span>Mã SV</span>
+                  <strong>{student.studentCode}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Họ tên</span>
+                  <strong>{student.name}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Giới tính</span>
+                  <strong>{student.gender}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Ngày sinh</span>
+                  <strong>
+                    {student.dateOfBirth
+                      ? dateFormat.format(new Date(student.dateOfBirth))
+                      : emptyValue}
+                  </strong>
+                </div>
+                <div className="info-row">
+                  <span>Điện thoại</span>
+                  <strong>{student.phone || emptyValue}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Email</span>
+                  <strong>{student.email || emptyValue}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Khoa</span>
+                  <strong>{student.faculty || emptyValue}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Lớp</span>
+                  <strong>{student.className || emptyValue}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Địa chỉ</span>
+                  <strong>{student.address || emptyValue}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Liên hệ khẩn</span>
+                  <strong>{student.emergencyContact || emptyValue}</strong>
+                </div>
+                <div className="info-row">
+                  <span>Trạng thái</span>
+                  <strong>{student.status}</strong>
+                </div>
               </div>
             ) : editing ? (
               <div className="student-portal-edit-form">
-                <label>Điện thoại<input value={editForm.phone} onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })} /></label>
-                <label>Email<input value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} /></label>
-                <label>Địa chỉ<input value={editForm.address} onChange={(event) => setEditForm({ ...editForm, address: event.target.value })} /></label>
-                <label>Liên hệ khẩn cấp<input value={editForm.emergencyContact} onChange={(event) => setEditForm({ ...editForm, emergencyContact: event.target.value })} /></label>
+                <label>
+                  Điện thoại
+                  <input
+                    value={editForm.phone}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, phone: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Email
+                  <input
+                    value={editForm.email}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, email: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Địa chỉ
+                  <input
+                    value={editForm.address}
+                    onChange={(event) =>
+                      setEditForm({ ...editForm, address: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Liên hệ khẩn cấp
+                  <input
+                    value={editForm.emergencyContact}
+                    onChange={(event) =>
+                      setEditForm({
+                        ...editForm,
+                        emergencyContact: event.target.value,
+                      })
+                    }
+                  />
+                </label>
                 <div className="student-portal-edit-actions">
-                  <button className="primary-button" onClick={saveProfile}>Lưu</button>
-                  <button className="secondary-button" onClick={() => setEditing(false)}>Hủy</button>
+                  <button className="primary-button" onClick={saveProfile}>
+                    Lưu
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => setEditing(false)}
+                  >
+                    Hủy
+                  </button>
                 </div>
               </div>
             ) : (
@@ -318,36 +604,139 @@ export function StudentPortalSection() {
             {room?.room ? (
               <>
                 <div className="student-portal-info">
-                  <div className="info-row"><span>Phòng</span><strong>{room.room.roomNumber}</strong></div>
-                  <div className="info-row"><span>Tòa nhà</span><strong>{room.room.buildingName}</strong></div>
-                  <div className="info-row"><span>Sức chứa</span><strong>{room.room.currentOccupancy}/{room.room.capacity}</strong></div>
-                  <div className="info-row"><span>Trạng thái phòng</span><strong>{room.room.status}</strong></div>
+                  <div className="info-row">
+                    <span>Phòng</span>
+                    <strong>{room.room.roomNumber}</strong>
+                  </div>
+                  <div className="info-row">
+                    <span>Tòa nhà</span>
+                    <strong>{room.room.buildingName}</strong>
+                  </div>
+                  <div className="info-row">
+                    <span>Sức chứa</span>
+                    <strong>
+                      {room.room.currentOccupancy}/{room.room.capacity}
+                    </strong>
+                  </div>
+                  <div className="info-row">
+                    <span>Trạng thái phòng</span>
+                    <strong>{room.room.status}</strong>
+                  </div>
                 </div>
                 {room.roommates?.length > 0 ? (
                   <div style={{ marginTop: 12 }}>
                     <h3>Bạn cùng phòng</h3>
                     <div className="student-table-wrap">
-                    <table>
-                      <thead>
-                        <tr><th>Mã SV</th><th>Họ tên</th><th>Khoa</th><th>SĐT</th></tr>
-                      </thead>
-                      <tbody>
-                        {room.roommates.map((roommate) => (
-                          <tr key={roommate.id ?? roommate.studentCode}>
-                            <td>{roommate.studentCode}</td>
-                            <td>{roommate.name}</td>
-                            <td>{roommate.faculty}</td>
-                            <td>{roommate.phone}</td>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Mã SV</th>
+                            <th>Họ tên</th>
+                            <th>Khoa</th>
+                            <th>SĐT</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {room.roommates.map((roommate) => (
+                            <tr key={roommate.id ?? roommate.studentCode}>
+                              <td>{roommate.studentCode}</td>
+                              <td>{roommate.name}</td>
+                              <td>{roommate.faculty}</td>
+                              <td>{roommate.phone}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 ) : null}
               </>
             ) : (
-              <p style={{ padding: '1rem', color: '#64748b' }}>Bạn chưa được xếp phòng.</p>
+              <p style={{ padding: "1rem", color: "#64748b" }}>
+                Bạn chưa được xếp phòng.
+              </p>
+            )}
+          </section>
+
+          <section className="student-portal-card full-width">
+            <h2>Hợp đồng lưu trú</h2>
+            {contracts.length > 0 ? (
+              <div className="student-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Mã HĐ</th>
+                      <th>Hiệu lực</th>
+                      <th>Phí tháng</th>
+                      <th>Đặt cọc</th>
+                      <th>Trạng thái</th>
+                      <th>PDF</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contracts.map((contract) => (
+                      <tr key={contract.id}>
+                        <td>{contract.contractCode}</td>
+                        <td>
+                          {contract.startDate
+                            ? dateFormat.format(new Date(contract.startDate))
+                            : emptyValue}
+                          {" - "}
+                          {contract.endDate
+                            ? dateFormat.format(new Date(contract.endDate))
+                            : emptyValue}
+                          {contract.isExpiringSoon ? (
+                            <span className="table-badge rose contract-inline-badge">
+                              {Number(contract.daysUntilExpiry ?? 0) <= 0
+                                ? "Hết hạn hôm nay"
+                                : `Còn ${contract.daysUntilExpiry} ngày`}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td>
+                          {currencyFormat.format(contract.monthlyFee || 0)}
+                        </td>
+                        <td>
+                          {currencyFormat.format(contract.depositAmount || 0)}
+                        </td>
+                        <td>
+                          <span
+                            className={`table-badge ${contract.isExpired ? "rose" : contract.isExpiringSoon ? "amber" : "emerald"}`}
+                          >
+                            {contract.status}
+                          </span>
+                        </td>
+                        <td>
+                          {contract.hasPdf ? (
+                            <div className="contract-action-row">
+                              <button
+                                className="ghost-button compact"
+                                type="button"
+                                onClick={() => viewContract(contract)}
+                              >
+                                Xem
+                              </button>
+                              <button
+                                className="ghost-button compact"
+                                type="button"
+                                onClick={() => downloadContract(contract)}
+                              >
+                                Tải
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="muted-line">Chưa có PDF</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ padding: "1rem", color: "#64748b" }}>
+                Chưa có hợp đồng lưu trú.
+              </p>
             )}
           </section>
 
@@ -357,15 +746,32 @@ export function StudentPortalSection() {
               <img src="/vnpay-logo.svg" alt="VNPay" />
               <div>
                 <strong>Hình thức giao dịch khả dụng: VNPay</strong>
-                <span>Sinh viên chỉ thanh toán trực tuyến qua VNPay. Tiền mặt chỉ được kế toán ghi nhận tại quầy.</span>
+                <span>
+                  Sinh viên chỉ thanh toán trực tuyến qua VNPay. Tiền mặt chỉ
+                  được kế toán ghi nhận tại quầy.
+                </span>
               </div>
             </div>
-            {paymentError ? <div className="feedback error payment-inline-feedback">{paymentError}</div> : null}
+            {paymentError ? (
+              <div className="feedback error payment-inline-feedback">
+                {paymentError}
+              </div>
+            ) : null}
             {paymentNotice ? (
               <div className="feedback success payment-inline-feedback">
                 {paymentNotice}
                 {paymentDialog?.url ? (
-                  <button className="ghost-button compact" type="button" onClick={() => window.open(paymentDialog.url, '_blank', 'noopener,noreferrer')}>
+                  <button
+                    className="ghost-button compact"
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        paymentDialog.url,
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
+                  >
                     Mở VNPay
                   </button>
                 ) : null}
@@ -373,190 +779,482 @@ export function StudentPortalSection() {
             ) : null}
             {finance?.shares?.length > 0 ? (
               <div className="student-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Kỳ</th>
-                    <th>Hóa đơn</th>
-                    <th>Tổng phòng</th>
-                    <th>Phần bạn</th>
-                    <th>Đã nộp</th>
-                    <th>Còn lại</th>
-                    <th>Trạng thái</th>
-                    <th>Hạn nộp</th>
-                    <th>Thanh toán</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {finance.shares.map((share) => (
-                    <tr key={share.id}>
-                      <td>{share.billingMonth ? monthFormat.format(new Date(share.billingMonth)) : emptyValue}</td>
-                      <td>{share.invoiceCode || emptyValue}</td>
-                      <td>{currencyFormat.format(share.roomTotal)}</td>
-                      <td>{currencyFormat.format(share.expectedAmount)}</td>
-                      <td>{currencyFormat.format(share.paidAmount)}</td>
-                      <td>{currencyFormat.format(share.remainingAmount)}</td>
-                      <td>
-                        <span className={`table-badge ${share.status === 'Paid' ? 'emerald' : share.status === 'PartiallyPaid' ? 'amber' : 'rose'}`}>
-                          {statusLabel(share.status)}
-                        </span>
-                      </td>
-                      <td>{share.dueDate ? dateFormat.format(new Date(share.dueDate)) : emptyValue}</td>
-                      <td>
-                        {canPayShare(share) ? (
-                          <button
-                            type="button"
-                            className="vnpay-pay-button"
-                            onClick={() => payShareViaVnPay(share)}
-                            disabled={payingShareId === share.id}
-                            aria-label={`Thanh toán khoản công nợ ${share.invoiceCode || share.id} qua VNPay`}
-                          >
-                            <img src="/vnpay-logo.svg" alt="" aria-hidden="true" />
-                            <span>
-                              <strong>{payingShareId === share.id ? 'Đang mở VNPay...' : 'Thanh toán'}</strong>
-                              <small>Hình thức giao dịch VNPay</small>
-                            </span>
-                          </button>
-                        ) : emptyValue}
-                      </td>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Kỳ</th>
+                      <th>Hóa đơn</th>
+                      <th>Tổng phòng</th>
+                      <th>Phần bạn</th>
+                      <th>Đã nộp</th>
+                      <th>Còn lại</th>
+                      <th>Trạng thái</th>
+                      <th>Hạn nộp</th>
+                      <th>Thanh toán</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {finance.shares.map((share) => (
+                      <tr key={share.id}>
+                        <td>
+                          {share.billingMonth
+                            ? monthFormat.format(new Date(share.billingMonth))
+                            : emptyValue}
+                        </td>
+                        <td>{share.invoiceCode || emptyValue}</td>
+                        <td>{currencyFormat.format(share.roomTotal)}</td>
+                        <td>{currencyFormat.format(share.expectedAmount)}</td>
+                        <td>{currencyFormat.format(share.paidAmount)}</td>
+                        <td>{currencyFormat.format(share.remainingAmount)}</td>
+                        <td>
+                          <span
+                            className={`table-badge ${share.status === "Paid" ? "emerald" : share.status === "PartiallyPaid" ? "amber" : "rose"}`}
+                          >
+                            {statusLabel(share.status)}
+                          </span>
+                        </td>
+                        <td>
+                          {share.dueDate
+                            ? dateFormat.format(new Date(share.dueDate))
+                            : emptyValue}
+                        </td>
+                        <td>
+                          {canPayShare(share) ? (
+                            <button
+                              type="button"
+                              className="vnpay-pay-button"
+                              onClick={() => payShareViaVnPay(share)}
+                              disabled={payingShareId === share.id}
+                              aria-label={`Thanh toán khoản công nợ ${share.invoiceCode || share.id} qua VNPay`}
+                            >
+                              <img
+                                src="/vnpay-logo.svg"
+                                alt=""
+                                aria-hidden="true"
+                              />
+                              <span>
+                                <strong>
+                                  {payingShareId === share.id
+                                    ? "Đang mở VNPay..."
+                                    : "Thanh toán"}
+                                </strong>
+                                <small>Hình thức giao dịch VNPay</small>
+                              </span>
+                            </button>
+                          ) : (
+                            emptyValue
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <p style={{ padding: '1rem', color: '#64748b' }}>Chưa có công nợ tài chính.</p>
+              <p style={{ padding: "1rem", color: "#64748b" }}>
+                Chưa có công nợ tài chính.
+              </p>
             )}
 
             {finance?.roommateShares?.length > 0 ? (
               <div className="roommate-finance-block">
                 <h3>Trạng thái đóng phí các thành viên trong phòng</h3>
                 <div className="student-table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>Kỳ</th><th>Sinh viên</th><th>Phải nộp</th><th>Đã nộp</th><th>Còn lại</th><th>Trạng thái</th></tr>
-                  </thead>
-                  <tbody>
-                    {finance.roommateShares.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.billingMonth ? monthFormat.format(new Date(item.billingMonth)) : emptyValue}</td>
-                        <td>{item.studentName} <span className="muted-line">{item.studentCode}</span></td>
-                        <td>{currencyFormat.format(item.expectedAmount)}</td>
-                        <td>{currencyFormat.format(item.paidAmount)}</td>
-                        <td>{currencyFormat.format(item.remainingAmount)}</td>
-                        <td>
-                          <span className={`table-badge ${item.status === 'Paid' ? 'emerald' : item.status === 'PartiallyPaid' ? 'amber' : 'rose'}`}>
-                            {statusLabel(item.status)}
-                          </span>
-                        </td>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Kỳ</th>
+                        <th>Sinh viên</th>
+                        <th>Phải nộp</th>
+                        <th>Đã nộp</th>
+                        <th>Còn lại</th>
+                        <th>Trạng thái</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {finance.roommateShares.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            {item.billingMonth
+                              ? monthFormat.format(new Date(item.billingMonth))
+                              : emptyValue}
+                          </td>
+                          <td>
+                            {item.studentName}{" "}
+                            <span className="muted-line">
+                              {item.studentCode}
+                            </span>
+                          </td>
+                          <td>{currencyFormat.format(item.expectedAmount)}</td>
+                          <td>{currencyFormat.format(item.paidAmount)}</td>
+                          <td>{currencyFormat.format(item.remainingAmount)}</td>
+                          <td>
+                            <span
+                              className={`table-badge ${item.status === "Paid" ? "emerald" : item.status === "PartiallyPaid" ? "amber" : "rose"}`}
+                            >
+                              {statusLabel(item.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : null}
           </section>
 
           <div className="student-portal-action-grid">
-          <section className="student-portal-card">
-            <h2>Yêu cầu chuyển phòng</h2>
-            {room?.room ? (
+            <section className="student-portal-card">
+              <h2>Báo lỗi thiết bị</h2>
+              {room?.room ? (
+                <div className="student-portal-edit-form">
+                  <label>
+                    Thiết bị
+                    <select
+                      value={maintenanceForm.equipmentType}
+                      onChange={(event) =>
+                        setMaintenanceForm({
+                          ...maintenanceForm,
+                          equipmentType: event.target.value,
+                          otherEquipmentName:
+                            event.target.value === "Other"
+                              ? maintenanceForm.otherEquipmentName
+                              : "",
+                        })
+                      }
+                    >
+                      <option value="Fan">Quạt</option>
+                      <option value="AirConditioner">Điều hòa</option>
+                      <option value="Light">Bóng đèn</option>
+                      <option value="Other">Khác</option>
+                    </select>
+                  </label>
+                  {maintenanceForm.equipmentType === "Other" ? (
+                    <label>
+                      Tên thiết bị
+                      <input
+                        value={maintenanceForm.otherEquipmentName}
+                        onChange={(event) =>
+                          setMaintenanceForm({
+                            ...maintenanceForm,
+                            otherEquipmentName: event.target.value,
+                          })
+                        }
+                        placeholder="Nhập tên thiết bị cần bảo trì"
+                      />
+                    </label>
+                  ) : null}
+                  <label>
+                    Mô tả lỗi
+                    <textarea
+                      value={maintenanceForm.description}
+                      onChange={(event) =>
+                        setMaintenanceForm({
+                          ...maintenanceForm,
+                          description: event.target.value,
+                        })
+                      }
+                      rows={3}
+                      placeholder="Ví dụ: bóng đèn không sáng, quạt kêu lớn..."
+                    />
+                  </label>
+                  <button className="primary-button" onClick={submitMaintenanceRequest}>
+                    Gửi yêu cầu
+                  </button>
+                </div>
+              ) : (
+                <p style={{ padding: "1rem", color: "#64748b" }}>
+                  Bạn cần được xếp phòng trước khi báo lỗi thiết bị.
+                </p>
+              )}
+              {maintenanceRequests.length > 0 ? (
+                <div style={{ marginTop: 16 }}>
+                  <h3>Lịch sử bảo trì</h3>
+                  <div className="student-table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Thiết bị</th>
+                          <th>Mô tả</th>
+                          <th>Kỹ thuật</th>
+                          <th>Trạng thái</th>
+                          <th>Ghi chú</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {maintenanceRequests.map((item) => (
+                          <tr key={item.id}>
+                            <td>
+                              {item.equipmentType === "Other"
+                                ? item.otherEquipmentName || equipmentLabel(item.equipmentType)
+                                : equipmentLabel(item.equipmentType)}
+                            </td>
+                            <td>{item.description}</td>
+                            <td>{item.technicianName || emptyValue}</td>
+                            <td>
+                              <span
+                                className={`table-badge ${item.status === "Done" ? "emerald" : item.status === "Rejected" ? "rose" : "amber"}`}
+                              >
+                                {statusLabel(item.status)}
+                              </span>
+                            </td>
+                            <td>{item.adminNote || emptyValue}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="student-portal-card">
+              <div className="student-portal-card-header">
+                <div>
+                  <h2>Vi phạm & điểm rèn luyện</h2>
+                  <p>
+                    Đang xem MSSV {profile?.student?.studentCode || emptyValue}
+                    {profile?.student?.name ? ` - ${profile.student.name}` : ""}
+                  </p>
+                </div>
+                <div className="student-portal-card-actions">
+                  <span>{violations.length} bản ghi</span>
+                  <button
+                    type="button"
+                    className="ghost-button compact"
+                    onClick={() => loadViolationsOnly()}
+                  >
+                    Tải lại
+                  </button>
+                </div>
+              </div>
+              {violations.length > 0 ? (
+                <div className="student-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Loại</th>
+                        <th>Ngày</th>
+                        <th>Mức phạt</th>
+                        <th>Trừ điểm</th>
+                        <th>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {violations.map((item) => (
+                        <tr key={item.id}>
+                          <td>{violationLabel(item.violationType)}</td>
+                          <td>
+                            {item.violationDate
+                              ? dateFormat.format(new Date(item.violationDate))
+                              : emptyValue}
+                          </td>
+                          <td>{currencyFormat.format(item.fineAmount || 0)}</td>
+                          <td>{item.trainingPointDeduction || 0}</td>
+                          <td>
+                            <span
+                              className={`table-badge ${item.status === "Paid" ? "emerald" : item.status === "Cancelled" ? "rose" : "amber"}`}
+                            >
+                              {statusLabel(item.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p style={{ padding: "1rem", color: "#64748b" }}>
+                  Chưa có biên bản vi phạm cho MSSV này.
+                </p>
+              )}
+            </section>
+
+            <section className="student-portal-card">
+              <h2>Yêu cầu chuyển phòng</h2>
+              {room?.room ? (
+                <div className="student-portal-edit-form">
+                  <label>
+                    Phòng muốn chuyển đến
+                    <select
+                      value={transferForm.desiredRoomId}
+                      onChange={(event) =>
+                        setTransferForm({
+                          ...transferForm,
+                          desiredRoomId: event.target.value,
+                        })
+                      }
+                    >
+                      <option value="">— Chọn phòng —</option>
+                      {rooms
+                        .filter((item) => item.id !== profile?.student?.roomId)
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.roomNumber} ({item.buildingName})
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label>
+                    Lý do
+                    <textarea
+                      value={transferForm.reason}
+                      onChange={(event) =>
+                        setTransferForm({
+                          ...transferForm,
+                          reason: event.target.value,
+                        })
+                      }
+                      rows={3}
+                    />
+                  </label>
+                  <button className="primary-button" onClick={submitTransfer}>
+                    Gửi yêu cầu
+                  </button>
+                </div>
+              ) : null}
+              {transfers.length > 0 ? (
+                <div style={{ marginTop: 16 }}>
+                  <h3>Lịch sử yêu cầu</h3>
+                  <div className="student-table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Phòng hiện tại</th>
+                          <th>Phòng muốn</th>
+                          <th>Lý do</th>
+                          <th>Trạng thái</th>
+                          <th>Ghi chú</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transfers.map((transfer) => (
+                          <tr key={transfer.id}>
+                            <td>{transfer.currentRoom}</td>
+                            <td>{transfer.desiredRoom}</td>
+                            <td>{transfer.reason}</td>
+                            <td>
+                              <span
+                                className={`table-badge ${transfer.status === "Approved" ? "emerald" : transfer.status === "Rejected" ? "rose" : "amber"}`}
+                              >
+                                {statusLabel(transfer.status)}
+                              </span>
+                            </td>
+                            <td>{transfer.decisionNote || emptyValue}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="student-portal-card">
+              <h2>Nhắn tin với quản lý</h2>
               <div className="student-portal-edit-form">
-                <label>Phòng muốn chuyển đến
-                  <select value={transferForm.desiredRoomId} onChange={(event) => setTransferForm({ ...transferForm, desiredRoomId: event.target.value })}>
-                    <option value="">— Chọn phòng —</option>
-                    {rooms.filter((item) => item.id !== profile?.student?.roomId).map((item) => (
-                      <option key={item.id} value={item.id}>{item.roomNumber} ({item.buildingName})</option>
+                <label>
+                  Gửi đến
+                  <select
+                    value={chatForm.receiverId}
+                    onChange={(event) =>
+                      setChatForm({
+                        ...chatForm,
+                        receiverId: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="">— Chọn quản lý —</option>
+                    {managers.map((manager) => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.fullName || manager.username} (
+                        {manager.roleName})
+                      </option>
                     ))}
                   </select>
                 </label>
-                <label>Lý do<textarea value={transferForm.reason} onChange={(event) => setTransferForm({ ...transferForm, reason: event.target.value })} rows={3} /></label>
-                <button className="primary-button" onClick={submitTransfer}>Gửi yêu cầu</button>
+                <label>
+                  Nội dung
+                  <textarea
+                    value={chatForm.content}
+                    onChange={(event) =>
+                      setChatForm({ ...chatForm, content: event.target.value })
+                    }
+                    rows={3}
+                    placeholder="Nhập tin nhắn..."
+                  />
+                </label>
+                <button className="primary-button" onClick={sendMessage}>
+                  Gửi
+                </button>
               </div>
-            ) : null}
-            {transfers.length > 0 ? (
-              <div style={{ marginTop: 16 }}>
-                <h3>Lịch sử yêu cầu</h3>
-                <div className="student-table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>Phòng hiện tại</th><th>Phòng muốn</th><th>Lý do</th><th>Trạng thái</th><th>Ghi chú</th></tr>
-                  </thead>
-                  <tbody>
-                    {transfers.map((transfer) => (
-                      <tr key={transfer.id}>
-                        <td>{transfer.currentRoom}</td>
-                        <td>{transfer.desiredRoom}</td>
-                        <td>{transfer.reason}</td>
-                        <td>
-                          <span className={`table-badge ${transfer.status === 'Approved' ? 'emerald' : transfer.status === 'Rejected' ? 'rose' : 'amber'}`}>
-                            {statusLabel(transfer.status)}
-                          </span>
-                        </td>
-                        <td>{transfer.decisionNote || emptyValue}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="student-portal-card">
-            <h2>Nhắn tin với quản lý</h2>
-            <div className="student-portal-edit-form">
-              <label>Gửi đến
-                <select value={chatForm.receiverId} onChange={(event) => setChatForm({ ...chatForm, receiverId: event.target.value })}>
-                  <option value="">— Chọn quản lý —</option>
-                  {managers.map((manager) => (
-                    <option key={manager.id} value={manager.id}>{manager.fullName || manager.username} ({manager.roleName})</option>
-                  ))}
-                </select>
-              </label>
-              <label>Nội dung<textarea value={chatForm.content} onChange={(event) => setChatForm({ ...chatForm, content: event.target.value })} rows={3} placeholder="Nhập tin nhắn..." /></label>
-              <button className="primary-button" onClick={sendMessage}>Gửi</button>
-            </div>
-            {messages.length > 0 ? (
-              <div style={{ marginTop: 16, maxHeight: 300, overflowY: 'auto' }}>
-                <h3>Tin nhắn</h3>
-                {messages.map((message) => (
-                  <div key={message.id} className={`chat-bubble ${message.senderId === user?.id ? 'sent' : 'received'}`}>
-                    <div className="chat-meta">
-                      <strong>{message.senderId === user?.id ? 'Bạn' : message.senderName}</strong>
-                      <span>{message.createdAt ? timeFormat.format(new Date(message.createdAt)) : ''}</span>
+              {messages.length > 0 ? (
+                <div
+                  style={{ marginTop: 16, maxHeight: 300, overflowY: "auto" }}
+                >
+                  <h3>Tin nhắn</h3>
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`chat-bubble ${message.senderId === user?.id ? "sent" : "received"}`}
+                    >
+                      <div className="chat-meta">
+                        <strong>
+                          {message.senderId === user?.id
+                            ? "Bạn"
+                            : message.senderName}
+                        </strong>
+                        <span>
+                          {message.createdAt
+                            ? timeFormat.format(new Date(message.createdAt))
+                            : ""}
+                        </span>
+                      </div>
+                      <p>{message.content}</p>
                     </div>
-                    <p>{message.content}</p>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-            ) : null}
-          </section>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+              ) : null}
+            </section>
           </div>
         </div>
       </div>
       {paymentDialog ? (
-        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setPaymentDialog(null)
-        }}>
-          <div className="modal-card vnpay-payment-modal" role="dialog" aria-modal="true" aria-labelledby="vnpay-student-title">
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPaymentDialog(null);
+          }}
+        >
+          <div
+            className="modal-card vnpay-payment-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vnpay-student-title"
+          >
             <div className="vnpay-payment-header">
               <img src="/vnpay-logo.svg" alt="VNPay" />
               <div>
                 <h2 id="vnpay-student-title">Thanh toán qua VNPay</h2>
-                <p>Kiểm tra thông tin khoản thu trước khi mở cổng thanh toán VNPay.</p>
+                <p>
+                  Kiểm tra thông tin khoản thu trước khi mở cổng thanh toán
+                  VNPay.
+                </p>
               </div>
             </div>
             <div className="vnpay-payment-summary">
               <div>
                 <span>Hóa đơn</span>
-                <strong>{paymentDialog.invoiceCode || '-'}</strong>
+                <strong>{paymentDialog.invoiceCode || "-"}</strong>
               </div>
               <div>
                 <span>Số tiền</span>
-                <strong>{currencyFormat.format(paymentDialog.amount || 0)}</strong>
+                <strong>
+                  {currencyFormat.format(paymentDialog.amount || 0)}
+                </strong>
               </div>
               <div>
                 <span>Trạng thái</span>
@@ -564,15 +1262,37 @@ export function StudentPortalSection() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="secondary-button" type="button" onClick={() => setPaymentDialog(null)}>Đóng</button>
-              <button className="primary-button" type="button" onClick={() => window.open(paymentDialog.url, '_blank', 'noopener,noreferrer')}>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setPaymentDialog(null)}
+              >
+                Đóng
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() =>
+                  window.open(
+                    paymentDialog.url,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+              >
                 Mở cổng VNPay
               </button>
-              <button className="ghost-button" type="button" onClick={loadPortalData}>Làm mới trạng thái</button>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={loadPortalData}
+              >
+                Làm mới trạng thái
+              </button>
             </div>
           </div>
         </div>
       ) : null}
     </div>
-  )
+  );
 }

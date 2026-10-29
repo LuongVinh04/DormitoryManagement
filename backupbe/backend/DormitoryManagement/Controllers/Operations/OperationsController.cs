@@ -2,7 +2,9 @@ using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Models;
 using DormitoryManagement.Services;
+using DormitoryManagement.Services.Contracts;
 using DormitoryManagement.Services.Operations;
+using DormitoryManagement.Services.Realtime;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +12,12 @@ namespace DormitoryManagement.Controllers.Operations;
 
 [ApiController]
 [Route("api/operations")]
-public class OperationsController(AppDbContext db, VnPayService vnPayService) : ControllerBase
+public class OperationsController(
+    AppDbContext db,
+    VnPayService vnPayService,
+    ContractFileStorageService contractFileStorage,
+    RealtimeBroadcastService realtime,
+    ContractNotificationEmailService contractEmailService) : ControllerBase
 {
     [HttpGet("registrations")]
     public async Task<IActionResult> GetRegistrations()
@@ -96,6 +103,23 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         }
 
         await db.SaveChangesAsync();
+
+        await realtime.BroadcastRoomAllocationChangedAsync(
+            null,
+            null,
+            "registration-approved",
+            "Có sinh viên vừa được xếp vào phòng.");
+
+        await realtime.BroadcastNotificationAsync(
+            "rooms",
+            "success",
+            "Đã xếp phòng",
+            "Một hồ sơ đăng ký đã được duyệt và xếp phòng",
+            "/operations",
+            "operations-registrations",
+            "panel-operations-registrations");
+
+        await realtime.BroadcastDashboardChangedAsync();
         return Ok(new { message = "Đã duyệt đăng ký và xếp phòng cho sinh viên." });
     }
 
@@ -131,6 +155,10 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
     [HttpGet("contracts")]
     public async Task<IActionResult> GetContracts()
     {
+        await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await db.SaveChangesAsync();
+
+        var today = DateTime.Today;
         var data = await db.Contracts
             .Include(x => x.Student)
             .ThenInclude(x => x!.Room)
@@ -149,6 +177,14 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
                 x.StartDate,
                 x.EndDate,
                 x.Status,
+                daysUntilExpiry = EF.Functions.DateDiffDay(today, x.EndDate),
+                isExpired = x.EndDate.Date < today || x.Status == "Expired" || x.Status == "Cancelled",
+                isExpiringSoon = x.Status == "Active" && x.EndDate.Date >= today && x.EndDate.Date <= today.AddDays(7),
+                hasPdf = x.PdfPublicUrl != "" || x.PdfStoragePath != "",
+                x.PdfFileName,
+                x.PdfPublicUrl,
+                x.PdfUploadedAt,
+                x.ExpiryWarningSentAt,
                 x.CreatedAt
             })
             .ToListAsync();
@@ -188,12 +224,23 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
             MonthlyFee = request.MonthlyFee,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            Status = request.Status.Trim()
+            Status = request.Status.Trim(),
+            PdfPublicUrl = request.PdfPublicUrl?.Trim() ?? string.Empty
         };
         db.Contracts.Add(entity);
         try
         {
             await db.SaveChangesAsync();
+
+            await realtime.BroadcastNotificationAsync(
+                "contracts",
+                entity.EndDate.Date <= DateTime.Today.AddDays(7) ? "danger" : "info",
+                "Hợp đồng đã thay đổi",
+                $"Hợp đồng {entity.ContractCode} đã được cập nhật",
+                "/students",
+                "students-contracts",
+                "panel-students-contracts");
+            await realtime.BroadcastDashboardChangedAsync();
         }
         catch (DbUpdateException error) when (IsContractUniquenessError(error, "StudentId"))
         {
@@ -242,10 +289,24 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         entity.StartDate = request.StartDate;
         entity.EndDate = request.EndDate;
         entity.Status = request.Status.Trim();
+        if (request.PdfPublicUrl is not null)
+        {
+            entity.PdfPublicUrl = request.PdfPublicUrl.Trim();
+        }
         entity.UpdatedAt = DateTime.UtcNow;
         try
         {
             await db.SaveChangesAsync();
+
+            await realtime.BroadcastNotificationAsync(
+                "contracts",
+                entity.EndDate.Date <= DateTime.Today.AddDays(7) ? "danger" : "info",
+                "Hợp đồng đã thay đổi",
+                $"Hợp đồng {entity.ContractCode} đã được cập nhật",
+                "/students",
+                "students-contracts",
+                "panel-students-contracts");
+            await realtime.BroadcastDashboardChangedAsync();
         }
         catch (DbUpdateException error) when (IsContractUniquenessError(error, "StudentId"))
         {
@@ -259,14 +320,137 @@ public class OperationsController(AppDbContext db, VnPayService vnPayService) : 
         return Ok(entity);
     }
 
+    [HttpPost("contracts/{id:int}/pdf")]
+    [RequestSizeLimit(25 * 1024 * 1024)]
+    public async Task<IActionResult> UploadContractPdf(int id, IFormFile file)
+    {
+        var entity = await db.Contracts.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        try
+        {
+            await contractFileStorage.SavePdfAsync(entity, file, HttpContext.RequestAborted);
+            await db.SaveChangesAsync();
+
+            await realtime.BroadcastNotificationAsync(
+                "contracts",
+                "success",
+                "Đã upload hợp đồng pdf",
+                $"Hợp đồng {entity.ContractCode} đã có file pdf",
+                "/students",
+                "students-contracts",
+                "panel-students-contracts");
+            await realtime.BroadcastDashboardChangedAsync();
+
+        }
+        catch (InvalidOperationException error)
+        {
+            return BadRequest(new { message = error.Message });
+        }
+
+        return Ok(new
+        {
+            entity.Id,
+            entity.ContractCode,
+            hasPdf = true,
+            entity.PdfFileName,
+            entity.PdfPublicUrl,
+            entity.PdfUploadedAt
+        });
+    }
+
+    [HttpGet("contracts/{id:int}/pdf/view")]
+    public async Task<IActionResult> ViewContractPdf(int id)
+    {
+        var entity = await db.Contracts.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        var localFile = contractFileStorage.GetLocalFile(entity);
+        if (localFile is not null)
+        {
+            return PhysicalFile(localFile.FullName, "application/pdf", enableRangeProcessing: true);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entity.PdfPublicUrl))
+        {
+            return Redirect(entity.PdfPublicUrl);
+        }
+
+        return NotFound(new { message = "Hợp đồng chưa có file PDF." });
+    }
+
+    [HttpGet("contracts/{id:int}/pdf/download")]
+    public async Task<IActionResult> DownloadContractPdf(int id)
+    {
+        var entity = await db.Contracts.FindAsync(id);
+        if (entity is null) return NotFound();
+
+        var fileName = string.IsNullOrWhiteSpace(entity.PdfFileName)
+            ? $"{entity.ContractCode}.pdf"
+            : entity.PdfFileName;
+        var localFile = contractFileStorage.GetLocalFile(entity);
+        if (localFile is not null)
+        {
+            return PhysicalFile(localFile.FullName, "application/pdf", fileName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entity.PdfPublicUrl))
+        {
+            return Redirect(entity.PdfPublicUrl);
+        }
+
+        return NotFound(new { message = "Hợp đồng chưa có file PDF." });
+    }
+
+    [HttpPost("contracts/send-expiry-warnings")]
+    public async Task<IActionResult> SendContractExpiryWarnings()
+    {
+        var today = DateTime.Today;
+        var warningEnd = today.AddDays(7);
+        var contracts = await db.Contracts
+            .Include(x => x.Student)
+            .Where(x =>
+                x.Status == "Active" &&
+                x.EndDate.Date >= today &&
+                x.EndDate.Date <= warningEnd &&
+                x.ExpiryWarningSentAt == null)
+            .ToListAsync();
+
+        var sent = 0;
+        foreach (var contract in contracts)
+        {
+            if (await contractEmailService.SendExpiryWarningAsync(contract, HttpContext.RequestAborted))
+            {
+                sent++;
+                contract.ExpiryWarningSentAt = DateTime.UtcNow;
+                contract.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(new { scanned = contracts.Count, sent, smtpConfigured = contractEmailService.IsConfigured });
+    }
+
     [HttpDelete("contracts/{id:int}")]
     public async Task<IActionResult> DeleteContract(int id)
     {
         var entity = await db.Contracts.FindAsync(id);
         if (entity is null) return NotFound();
 
+        contractFileStorage.DeleteLocalFile(entity);
         db.Contracts.Remove(entity);
         await db.SaveChangesAsync();
+
+        await realtime.BroadcastNotificationAsync(
+                "contracts",
+                entity.EndDate.Date <= DateTime.Today.AddDays(7) ? "danger" : "info",
+                "Hợp đồng đã thay đổi",
+                $"Hợp đồng {entity.ContractCode} đã được cập nhật",
+                "/students",
+                "students-contracts",
+                "panel-students-contracts");
+        await realtime.BroadcastDashboardChangedAsync();
+
         return NoContent();
     }
 

@@ -1,4 +1,4 @@
-import { buildEnumOptions, buildValueLabels } from "./enums";
+﻿import { buildEnumOptions, buildValueLabels } from "./enums";
 
 const currency = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -19,6 +19,8 @@ export const API_ENDPOINTS = {
   roomFeeProfiles: "/api/operations/room-fee-profiles",
   roomFinances: "/api/operations/room-finances",
   invoices: "/api/operations/invoices",
+  violations: "/api/operations/violations",
+  maintenanceRequests: "/api/operations/maintenance-requests",
   roles: "/api/people/roles",
   users: "/api/people/users",
 };
@@ -44,6 +46,10 @@ export const REGISTRATION_STATUS_OPTIONS =
 export const CONTRACT_STATUS_OPTIONS = buildEnumOptions("contractStatus");
 export const INVOICE_STATUS_OPTIONS = buildEnumOptions("invoiceStatus");
 export const PAYMENT_METHOD_OPTIONS = buildEnumOptions("paymentMethod");
+export const VIOLATION_TYPE_OPTIONS = buildEnumOptions("violationType");
+export const VIOLATION_STATUS_OPTIONS = buildEnumOptions("violationStatus");
+export const EQUIPMENT_TYPE_OPTIONS = buildEnumOptions("equipmentType");
+export const MAINTENANCE_STATUS_OPTIONS = buildEnumOptions("maintenanceStatus");
 
 export const ENTITY_CONFIGS = {
   roomCategories: {
@@ -182,6 +188,7 @@ export const ENTITY_CONFIGS = {
       ["name", "Tên tòa"],
       ["genderPolicy", "Loại khu"],
       ["numberOfFloors", "Số tầng"],
+      ["roomZoneNames", "Phân khu"],
       ["roomCount", "Số phòng"],
       ["currentOccupancy", "Đang ở"],
       ["totalCapacity", "Sức chứa"],
@@ -196,6 +203,7 @@ export const ENTITY_CONFIGS = {
         options: GENDER_POLICY_OPTIONS,
       },
       { name: "numberOfFloors", label: "Số tầng", type: "number" },
+      { name: "roomCount", label: "Số phòng", type: "number" },
       {
         name: "managerName",
         label: "Người quản lý",
@@ -251,6 +259,10 @@ export const ENTITY_CONFIGS = {
         type: "lookup",
         lookup: "roomZones",
         allowEmpty: true,
+        filterLookup: (item, values) =>
+          !values.buildingId ||
+          !item.buildingId ||
+          String(item.buildingId) === String(values.buildingId),
         optionLabel: (item) => `${item.code} - ${item.name}`,
       },
       { name: "floorNumber", label: "Tầng", type: "number" },
@@ -360,6 +372,8 @@ export const ENTITY_CONFIGS = {
       ["depositAmount", "Đặt cọc"],
       ["monthlyFee", "Phí tháng"],
       ["endDate", "Hết hạn"],
+      ["expiryLabel", "Cảnh báo"],
+      ["contractFileLabel", "PDF"],
       ["status", "Trạng thái"],
     ],
     fields: [
@@ -372,8 +386,15 @@ export const ENTITY_CONFIGS = {
         optionLabel: (item) => `${item.studentCode} - ${item.name}`,
       },
       { name: "depositAmount", label: "Tiền đặt cọc", type: "number" },
+      { name: "monthlyFee", label: "Phí tháng", type: "number" },
       { name: "startDate", label: "Ngày bắt đầu", type: "date" },
       { name: "endDate", label: "Ngày kết thúc", type: "date" },
+      {
+        name: "pdfPublicUrl",
+        label: "Link PDF ngoài",
+        type: "text",
+        allowEmpty: true,
+      },
       {
         name: "status",
         label: "Trạng thái",
@@ -610,6 +631,109 @@ export const ENTITY_CONFIGS = {
       },
     ],
   },
+  violations: {
+    title: "Quản lý vi phạm",
+    description:
+     "Lập biên bản ghi nhận, hút thuốc, phá hoại tài sản kèm mức phạt và điểm rèn luyện.",
+    columns: [
+      ["studentCode", "MSSV"],
+      ["studentName", "Sinh viên"],
+      ["roomNumber", "Phòng"],
+      ["violationType", "Loại vi phạm"],
+      ["violationDate", "Ngày vi phạm"],
+      ["fineAmount", "Mức phạt"],
+      ["trainingPointDeduction", "Trừ điểm"],
+      ["status", "Trạng thái"],
+    ],
+    fields: [
+      {
+        name: "studentId",
+        label: "Sinh viên",
+        type: "lookup",
+        lookup: "students",
+        optionLabel: (item) => `${item.studentCode} - ${item.name}`,
+      },
+      {
+        name: "roomId",
+        label: "Phòng",
+        type: "lookup",
+        lookup: "rooms",
+        allowEmpty: true,
+        optionLabel: (item) => `${item.roomNumber} (${item.buildingName})`,
+      },
+      {
+        name: "violationType",
+        label: "Loại vi phạm",
+        type: "select",
+        options: VIOLATION_TYPE_OPTIONS,
+      },
+      { name: "violationDate", label: "Ngày vi phạm", type: "date" },
+      { name: "fineAmount", label: "Mức phạt", type: "number" },
+      { name: "trainingPointDeduction", label: "Điểm rèn luyện bị trừ", type: "number" },
+      { name: "description", label: "Mô tả", type: "textarea", allowEmpty: true },
+      {
+        name: "status",
+        label: "Trạng thái",
+        type: "select",
+        options: VIOLATION_STATUS_OPTIONS,
+      },
+      { name: "handledBy", label: "Người xử lý", type: "text", allowEmpty: true },
+      { name: "note", label: "Ghi chú", type: "textarea", allowEmpty: true },
+    ],
+  },
+  maintenanceRequests: {
+    title: "Bảo trì thiết bị",
+    description:
+      "Theo dõi workflow sinh viên báo lỗi, admin duyệt, kỹ thuật xử lý và hoàn tất.",
+    columns: [
+      ["studentCode", "MSSV"],
+      ["studentName", "Sinh viên"],
+      ["roomNumber", "Phòng"],
+      ["equipmentName", "Thiết bị"],
+      ["description", "Mô tả"],
+      ["technicianName", "Kỹ thuật"],
+      ["status", "Trạng thái"],
+      ["createdAt", "Ngày báo"],
+    ],
+    fields: [
+      {
+        name: "studentId",
+        label: "Sinh viên",
+        type: "lookup",
+        lookup: "students",
+        optionLabel: (item) => `${item.studentCode} - ${item.name}`,
+      },
+      {
+        name: "roomId",
+        label: "Phòng",
+        type: "lookup",
+        lookup: "rooms",
+        optionLabel: (item) => `${item.roomNumber} (${item.buildingName})`,
+      },
+      {
+        name: "equipmentType",
+        label: "Thiết bị",
+        type: "select",
+        options: EQUIPMENT_TYPE_OPTIONS,
+      },
+      {
+        name: "otherEquipmentName",
+        label: "Tên thiết bị khác",
+        type: "text",
+        allowEmpty: true,
+        showWhen: (values) => values.equipmentType === "Other",
+      },
+      { name: "description", label: "Mô tả lỗi", type: "textarea" },
+      {
+        name: "status",
+        label: "Trạng thái",
+        type: "select",
+        options: MAINTENANCE_STATUS_OPTIONS,
+      },
+      { name: "technicianName", label: "Kỹ thuật phụ trách", type: "text", allowEmpty: true },
+      { name: "adminNote", label: "Ghi chú admin", type: "textarea", allowEmpty: true },
+    ],
+  },
   roles: {
     title: "Vai trò hệ thống",
     description: "Phân quyền quản trị, kế toán và điều hành ký túc xá.",
@@ -654,3 +778,4 @@ export const ENTITY_CONFIGS = {
     ],
   },
 };
+

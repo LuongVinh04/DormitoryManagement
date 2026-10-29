@@ -1,7 +1,7 @@
 using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Services;
-using DormitoryManagement.Services.Facilities;
+using DormitoryManagement.Services.Operations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,7 +39,9 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             return BadRequest(new { message = "Sinh viên đã có tài khoản. Vui lòng đăng nhập." });
         }
 
-        var usernameExists = await db.Users.AnyAsync(x => x.Username == request.Username.Trim());
+        var username = request.Username.Trim();
+        var normalizedUsername = username.ToLower();
+        var usernameExists = await db.Users.AnyAsync(x => x.Username.ToLower() == normalizedUsername);
         if (usernameExists)
         {
             return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
@@ -56,7 +58,7 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
 
         var user = new Users
         {
-            Username = request.Username.Trim(),
+            Username = username,
             FullName = student.Name,
             Email = student.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
@@ -234,6 +236,39 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             .ToListAsync();
 
         return Ok(new { shares, invoices, roommateShares });
+    }
+
+    [HttpGet("contracts")]
+    [Authorize]
+    public async Task<IActionResult> GetStudentContracts()
+    {
+        var student = await GetCurrentStudent();
+        if (student is null) return Unauthorized();
+
+        var today = DateTime.Today;
+        var contracts = await db.Contracts
+            .Where(x => x.StudentId == student.Id)
+            .OrderByDescending(x => x.StartDate)
+            .Select(x => new
+            {
+                x.Id,
+                x.ContractCode,
+                x.DepositAmount,
+                x.MonthlyFee,
+                x.StartDate,
+                x.EndDate,
+                x.Status,
+                isExpired = x.EndDate < today || x.Status == "Expired",
+                daysUntilExpiry = EF.Functions.DateDiffDay(today, x.EndDate),
+                isExpiringSoon = x.EndDate >= today && x.EndDate <= today.AddDays(7),
+                hasPdf = false,
+                pdfFileName = string.Empty,
+                viewUrl = string.Empty,
+                downloadUrl = string.Empty
+            })
+            .ToListAsync();
+
+        return Ok(contracts);
     }
 
     [HttpPost("invoices/{invoiceId:int}/vnpay/create")]
@@ -513,6 +548,25 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             return BadRequest(new { message = "Bạn chưa có phòng để chuyển." });
         }
 
+        if (student.RoomId.Value == request.DesiredRoomId)
+        {
+            return BadRequest(new { message = "Bạn đang ở phòng này." });
+        }
+
+        var desiredRoomExists = await db.Rooms.AnyAsync(x => x.Id == request.DesiredRoomId);
+        if (!desiredRoomExists)
+        {
+            return BadRequest(new { message = "Phòng muốn chuyển không tồn tại." });
+        }
+
+        var hasPendingRequest = await db.RoomTransferRequests.AnyAsync(x =>
+            x.StudentId == student.Id &&
+            x.Status == "Pending");
+        if (hasPendingRequest)
+        {
+            return BadRequest(new { message = "Bạn đang có yêu cầu chuyển phòng chờ xử lý." });
+        }
+
         var entity = new RoomTransferRequest
         {
             StudentId = student.Id,
@@ -529,6 +583,108 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
     }
 
     // ── Chat ─────────────────────────────────────────────────────────
+
+    [HttpGet("violations")]
+    [Authorize]
+    public async Task<IActionResult> GetMyViolations()
+    {
+        var student = await GetCurrentStudent();
+        if (student is null) return Unauthorized();
+
+        var violations = await db.ViolationRecords
+            .Include(x => x.Room)
+            .ThenInclude(x => x!.Building)
+            .Where(x => x.StudentId == student.Id)
+            .OrderByDescending(x => x.ViolationDate)
+            .Select(x => new
+            {
+                x.Id,
+                x.RoomId,
+                roomNumber = x.Room != null ? x.Room.RoomNumber : string.Empty,
+                buildingName = x.Room != null && x.Room.Building != null ? x.Room.Building.Name : string.Empty,
+                x.ViolationType,
+                x.Description,
+                x.FineAmount,
+                x.TrainingPointDeduction,
+                x.ViolationDate,
+                x.Status,
+                x.HandledBy,
+                x.Note,
+                x.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(violations);
+    }
+
+    [HttpGet("maintenance-requests")]
+    [Authorize]
+    public async Task<IActionResult> GetMyMaintenanceRequests()
+    {
+        var student = await GetCurrentStudent();
+        if (student is null) return Unauthorized();
+
+        var requests = await db.MaintenanceRequests
+            .Include(x => x.Room)
+            .ThenInclude(x => x!.Building)
+            .Where(x => x.StudentId == student.Id)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new
+            {
+                x.Id,
+                x.RoomId,
+                roomNumber = x.Room!.RoomNumber,
+                buildingName = x.Room.Building != null ? x.Room.Building.Name : string.Empty,
+                x.EquipmentType,
+                x.OtherEquipmentName,
+                equipmentName = x.EquipmentType == "Other" && x.OtherEquipmentName != string.Empty ? x.OtherEquipmentName : x.EquipmentType,
+                x.Description,
+                x.Status,
+                x.AdminNote,
+                x.TechnicianName,
+                x.ApprovedAt,
+                x.StartedAt,
+                x.CompletedAt,
+                x.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(requests);
+    }
+
+    [HttpPost("maintenance-requests")]
+    [Authorize]
+    public async Task<IActionResult> CreateMyMaintenanceRequest([FromBody] StudentMaintenanceCreateRequest request)
+    {
+        var student = await GetCurrentStudent();
+        if (student is null) return Unauthorized();
+
+        if (student.RoomId is null)
+        {
+            return BadRequest(new { message = "Ban chua co phong de bao loi thiet bi." });
+        }
+
+        var equipmentType = NormalizeEquipmentType(request.EquipmentType);
+        if (equipmentType == "Other" && string.IsNullOrWhiteSpace(request.OtherEquipmentName))
+        {
+            return BadRequest(new { message = "Vui long nhap ten thiet bi khac." });
+        }
+
+        var entity = new MaintenanceRequest
+        {
+            StudentId = student.Id,
+            RoomId = student.RoomId.Value,
+            EquipmentType = equipmentType,
+            OtherEquipmentName = equipmentType == "Other" ? request.OtherEquipmentName.Trim() : string.Empty,
+            Description = request.Description.Trim(),
+            Status = "Submitted"
+        };
+
+        db.MaintenanceRequests.Add(entity);
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Da gui yeu cau bao tri thiet bi." });
+    }
 
     [HttpGet("messages")]
     [Authorize]
@@ -642,18 +798,17 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             return BadRequest(new { message = "Yêu cầu đã được xử lý." });
         }
 
-        // Execute the transfer via workflow
-        var student = request.Student!;
-        var oldRoomId = student.RoomId;
-        student.RoomId = request.DesiredRoomId;
-        student.UpdatedAt = DateTime.UtcNow;
+        var result = await DormitoryWorkflowService.TransferStudentAsync(
+            db,
+            request.StudentId,
+            request.DesiredRoomId,
+            "Active",
+            "Đã duyệt chuyển phòng từ cổng sinh viên.");
 
-        // Update room counts
-        if (oldRoomId.HasValue)
+        if (!result.Success)
         {
-            await RoomOccupancyService.RecalculateRoomAsync(db, oldRoomId.Value);
+            return BadRequest(new { message = result.Message });
         }
-        await RoomOccupancyService.RecalculateRoomAsync(db, request.DesiredRoomId);
 
         request.Status = "Approved";
         request.DecisionDate = DateTime.UtcNow;
@@ -818,6 +973,14 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
         var user = await db.Users.Include(x => x.Student).FirstOrDefaultAsync(x => x.Id == userId);
         return user?.Student;
     }
+
+    private static string NormalizeEquipmentType(string? value)
+    {
+        var normalized = value?.Trim();
+        return normalized is "Fan" or "AirConditioner" or "Light" or "Other"
+            ? normalized
+            : "Fan";
+    }
 }
 
 // ── Request models ──────────────────────────────────────────────────
@@ -847,6 +1010,13 @@ public class TransferRequestCreate
 public class TransferDecisionRequest
 {
     public string? Note { get; set; }
+}
+
+public class StudentMaintenanceCreateRequest
+{
+    public string EquipmentType { get; set; } = "Fan";
+    public string OtherEquipmentName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
 }
 
 public class SendMessageRequest

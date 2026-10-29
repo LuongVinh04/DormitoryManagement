@@ -1,5 +1,3 @@
-using Dormitory.Models.Enum;
-
 namespace Dormitory.Models.Entities
 {
     public class RoomFeeProfile : BaseEntity
@@ -15,9 +13,9 @@ namespace Dormitory.Models.Entities
         public string OtherFeeName { get; set; } = string.Empty;
         public int BillingCycleDay { get; set; } = 10;
         public string Notes { get; set; } = string.Empty;
-        public DateTime EffectiveFrom { get; set; }
-        public DateTime EffectiveTo { get; set; }
-        public RoomAssignmentStatus Status { get; set; }
+        public DateTime? EffectiveFrom { get; set; }
+        public DateTime? EffectiveTo { get; set; }
+        public string Status { get; set; } = "Active";
 
 
         public Rooms? Room { get; set; }

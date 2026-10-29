@@ -1,4 +1,11 @@
-import { Component, lazy, Suspense, useEffect } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import {
   Navigate,
   Route,
@@ -23,6 +30,7 @@ import { useSidebarLayout } from "./hooks/useSidebarLayout";
 import { useAuth } from "./hooks/useAuth";
 import { LoginSection } from "./features/auth/LoginSection";
 import { currencyFormat, numberFormat } from "./helpers";
+import { useRealtime } from "./hooks/useRealtime";
 
 function lazyWithRetry(importer) {
   return lazy(async () => {
@@ -125,6 +133,10 @@ const StudentPortalSection = lazyWithRetry(() =>
 );
 
 function App() {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("dormitory_theme") === "dark";
+  });
   const {
     user,
     loading: authLoading,
@@ -142,6 +154,11 @@ function App() {
   } = useSidebarLayout();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("theme-dark", isDarkMode);
+    localStorage.setItem("dormitory_theme", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
 
   useEffect(() => {
     sessionStorage.removeItem("dormitory_lazy_retry");
@@ -241,6 +258,7 @@ function App() {
     notice,
     openCreate,
     openEdit,
+    receiveRealtimeNotification,
     refreshData,
     roomActions,
     roomOverview,
@@ -251,6 +269,7 @@ function App() {
     setRoomActions,
     setSelectedRoomId,
     updateModalField,
+    updateDashboardSummary,
   } = useDormitoryData();
   const {
     activeNavigation,
@@ -274,6 +293,30 @@ function App() {
       }, 50);
     }
   };
+
+  const handleRealtimeNotification = useCallback((notification) => {
+    receiveRealtimeNotification(notification);
+  }, [receiveRealtimeNotification]);
+
+  const handleRealtimeDataChanged = useCallback(() => {
+    refreshData();
+  }, [refreshData]);
+
+  const handleRealtimeRoomAllocation = useCallback(() => {
+    refreshData();
+  }, [refreshData]);
+
+  const handleRealtimeDashboardStats = useCallback((summary) => {
+    updateDashboardSummary(summary);
+  }, [updateDashboardSummary]);
+
+  useRealtime({
+    enabled: Boolean(user) && !authLoading && !user.studentId,
+    onNotification: handleRealtimeNotification,
+    onDataChanged: handleRealtimeDataChanged,
+    onRoomAllocationChanged: handleRealtimeRoomAllocation,
+    onDashboardStatsChanged: handleRealtimeDashboardStats,
+  });
 
   if (authLoading) {
     return (
@@ -330,9 +373,13 @@ function App() {
     );
   }
 
-  const appShellClassName = isSidebarCollapsed
-    ? "app-shell sidebar-collapsed"
-    : "app-shell";
+  const appShellClassName = [
+    "app-shell",
+    isSidebarCollapsed ? "sidebar-collapsed" : "",
+    isDarkMode ? "theme-dark" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const navAbbreviations = {
     overview: "TQ",
@@ -516,6 +563,22 @@ function App() {
               ))}
             </div>
             <div className="header-actions">
+              <button
+                className="theme-toggle-button"
+                type="button"
+                aria-pressed={isDarkMode}
+                onClick={() => setIsDarkMode((current) => !current)}
+                title={
+                  isDarkMode
+                    ? "Chuyển sang giao diện sáng"
+                    : "Chuyển sang giao diện tối"
+                }
+              >
+                <span className="theme-toggle-icon" aria-hidden="true">
+                  {isDarkMode ? "☀" : "☾"}
+                </span>
+                <span>{isDarkMode ? "Light mode" : "Dark mode"}</span>
+              </button>
               <button className="primary-button" onClick={refreshData}>
                 {"L\u00e0m m\u1edbi to\u00e0n h\u1ec7 th\u1ed1ng"}
               </button>
@@ -541,6 +604,11 @@ function App() {
             label={"H\u1ee3p \u0111\u1ed3ng hi\u1ec7u l\u1ef1c"}
             value={numberFormat.format(dashboard.summary.activeContracts)}
             accent="emerald"
+          />
+          <MetricCard
+            label={"Sắp hết hạn 7 ngày"}
+            value={numberFormat.format(dashboard.summary.expiringContracts7Days ?? 0)}
+            accent="rose"
           />
           <MetricCard
             label={"H\u00f3a \u0111\u01a1n ch\u01b0a thu"}
@@ -654,6 +722,8 @@ function App() {
                     deleteEntity={deleteEntity}
                     getPanelProps={getPanelProps}
                     refreshData={refreshData}
+
+                    
                   />
                 }
               />

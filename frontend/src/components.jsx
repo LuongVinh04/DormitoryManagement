@@ -143,6 +143,10 @@ function focusNearestFieldControl(event) {
 export function CrudPanel({ entityKey, rows, onCreate, onEdit, onDelete, extraRowActions = () => [], panelProps }) {
   const [query, setQuery] = useState('')
   const config = ENTITY_CONFIGS[entityKey]
+  const fieldsByName = useMemo(
+    () => Object.fromEntries((config.fields || []).map((field) => [field.name, field])),
+    [config.fields],
+  )
 
   const filteredRows = useMemo(() => {
     const keyword = query.trim().toLowerCase()
@@ -198,7 +202,7 @@ export function CrudPanel({ entityKey, rows, onCreate, onEdit, onDelete, extraRo
                 <tr key={item.id}>
                   {config.columns.map(([key, label]) => (
                     <td key={key} data-label={label}>
-                      {renderCell(item[key])}
+                      {renderCell(item[key], fieldsByName[key]?.options)}
                     </td>
                   ))}
                   <td data-label="Thao tác">

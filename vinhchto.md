@@ -216,7 +216,7 @@ npm run build
 ```powershell
 cd C:\Users\Minhhoangg\Desktop\CODE\project\backend\DormitoryManagement
 dotnet build
-dotnet run --urls http://127.0.0.1:5101
+dotnet run --urls http://127.0.0.1:5105
 ```
 
 ### Bước 5: backend tự tạo schema
@@ -255,7 +255,7 @@ Tuy nhiên cách đúng của project vẫn là:
 ```powershell
 cd C:\Users\Minhhoangg\Desktop\CODE\project\backend\DormitoryManagement
 dotnet build
-dotnet run --urls http://127.0.0.1:5101
+dotnet run --urls http://127.0.0.1:5105
 ```
 
 ## Frontend
@@ -270,7 +270,7 @@ npm run build
 
 ## URL truy cập
 
-- [http://127.0.0.1:5101/](http://127.0.0.1:5101/)
+- [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
 
 ## Kiểm tra nhanh
 

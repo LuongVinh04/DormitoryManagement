@@ -46,6 +46,22 @@ export function useDashboardViewModel({ dashboard, data, financeSummary, section
       panelKey: 'overview-occupancy-chart',
       panelId: 'panel-overview-occupancy-chart'
     },
+    {
+      label: 'Hợp đồng sắp hết hạn',
+      value: numberFormat.format(dashboard?.summary?.expiringContracts7Days ?? 0),
+      tone: 'rose',
+      route: '/students',
+      panelKey: 'students-contracts',
+      panelId: 'panel-students-contracts'
+    },
+    {
+      label: 'Bảo trì đang mở',
+      value: numberFormat.format(dashboard?.summary?.openMaintenanceRequests ?? 0),
+      tone: 'teal',
+      route: '/operations',
+      panelKey: 'operations-maintenance',
+      panelId: 'panel-operations-maintenance'
+    },
   ]), [dashboard, occupancyRate])
 
   const sectionStats = useMemo(() => {
@@ -58,6 +74,8 @@ export function useDashboardViewModel({ dashboard, data, financeSummary, section
         return [
           { label: 'Sinh viên chờ xếp', value: numberFormat.format(waitingStudents.length) },
           { label: 'Hồ sơ chờ duyệt', value: numberFormat.format(data.registrations.filter((item) => item.status === 'Pending').length) },
+          { label: 'Vi phạm tháng này', value: numberFormat.format(dashboard.summary.violationsThisMonth ?? 0) },
+          { label: 'Bảo trì đang mở', value: numberFormat.format(dashboard.summary.openMaintenanceRequests ?? 0) },
           { label: 'Phòng còn trống', value: numberFormat.format(data.rooms.filter((item) => Number(item.availableSlots) > 0).length) },
         ]
       case 'catalog':
@@ -77,6 +95,7 @@ export function useDashboardViewModel({ dashboard, data, financeSummary, section
           { label: 'Sinh viên đang ở', value: numberFormat.format(data.students.filter((item) => item.status === 'Active').length) },
           { label: 'Chờ nhận phòng', value: numberFormat.format(data.students.filter((item) => item.status === 'PendingMoveIn').length) },
           { label: 'Hợp đồng hiệu lực', value: numberFormat.format(dashboard.summary.activeContracts) },
+          { label: 'Sắp hết hạn 7 ngày', value: numberFormat.format(dashboard.summary.expiringContracts7Days ?? 0) },
         ]
       case 'finance':
         return [

@@ -168,6 +168,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
         var username = string.IsNullOrWhiteSpace(request.AccountUsername)
             ? studentCode.ToLowerInvariant()
             : request.AccountUsername.Trim();
+        var normalizedUsername = username.ToLower();
         var password = string.IsNullOrWhiteSpace(request.AccountPassword)
             ? $"{studentCode}@123"
             : request.AccountPassword;
@@ -177,7 +178,7 @@ public class PeopleController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Mã sinh viên đã tồn tại." });
         }
 
-        if (await db.Users.AnyAsync(x => x.Username == username))
+        if (await db.Users.AnyAsync(x => x.Username.ToLower() == normalizedUsername))
         {
             return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
         }
@@ -291,9 +292,10 @@ public class PeopleController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Vui lòng nhập tên đăng nhập." });
         }
 
+        var normalizedUsername = username.ToLower();
         var email = string.IsNullOrWhiteSpace(request.Email) ? student.Email : request.Email.Trim();
         var account = await db.Users.FirstOrDefaultAsync(x => x.StudentId == student.Id);
-        var duplicatedUsername = await db.Users.AnyAsync(x => x.Username == username && (account == null || x.Id != account.Id));
+        var duplicatedUsername = await db.Users.AnyAsync(x => x.Username.ToLower() == normalizedUsername && (account == null || x.Id != account.Id));
         if (duplicatedUsername)
         {
             return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
@@ -478,9 +480,16 @@ public class PeopleController(AppDbContext db) : ControllerBase
     [HttpPost("users")]
     public async Task<IActionResult> CreateUser([FromBody] UserRequest request)
     {
+        var username = request.Username.Trim();
+        var normalizedUsername = username.ToLower();
+        if (await db.Users.AnyAsync(x => x.Username.ToLower() == normalizedUsername))
+        {
+            return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
+        }
+
         var entity = new Users
         {
-            Username = request.Username.Trim(),
+            Username = username,
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim(),
             PasswordHash = request.PasswordHash.Trim(),
@@ -499,7 +508,14 @@ public class PeopleController(AppDbContext db) : ControllerBase
         var entity = await db.Users.FindAsync(id);
         if (entity is null) return NotFound();
 
-        entity.Username = request.Username.Trim();
+        var username = request.Username.Trim();
+        var normalizedUsername = username.ToLower();
+        if (await db.Users.AnyAsync(x => x.Id != id && x.Username.ToLower() == normalizedUsername))
+        {
+            return BadRequest(new { message = "Tên đăng nhập đã tồn tại." });
+        }
+
+        entity.Username = username;
         entity.FullName = request.FullName.Trim();
         entity.Email = request.Email.Trim();
         entity.PasswordHash = request.PasswordHash.Trim();

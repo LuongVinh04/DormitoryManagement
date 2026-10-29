@@ -6,6 +6,7 @@ public class BuildingRequest
     public string Name { get; set; } = string.Empty;
     public string GenderPolicy { get; set; } = "Mixed";
     public int NumberOfFloors { get; set; }
+    public int RoomCount { get; set; }
     public string ManagerName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 }

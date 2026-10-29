@@ -140,6 +140,28 @@ public static class DatabaseSchemaUpdater
 
             IF COL_LENGTH('dbo.Users', 'StudentId') IS NULL
                 ALTER TABLE [dbo].[Users] ADD [StudentId] INT NULL;
+
+            IF OBJECT_ID(N'dbo.RoomAssignments', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomAssignments', 'ToDate') IS NOT NULL
+                ALTER TABLE [dbo].[RoomAssignments] ALTER COLUMN [ToDate] DATETIME2 NULL;
+
+            IF COL_LENGTH('dbo.Contracts', 'PdfFileName') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [PdfFileName] NVARCHAR(260) NOT NULL DEFAULT(N'');
+
+            IF COL_LENGTH('dbo.Contracts', 'PdfContentType') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [PdfContentType] NVARCHAR(120) NOT NULL DEFAULT(N'');
+
+            IF COL_LENGTH('dbo.Contracts', 'PdfStoragePath') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [PdfStoragePath] NVARCHAR(1000) NOT NULL DEFAULT(N'');
+
+            IF COL_LENGTH('dbo.Contracts', 'PdfPublicUrl') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [PdfPublicUrl] NVARCHAR(1000) NOT NULL DEFAULT(N'');
+
+            IF COL_LENGTH('dbo.Contracts', 'PdfUploadedAt') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [PdfUploadedAt] DATETIME2 NULL;
+
+            IF COL_LENGTH('dbo.Contracts', 'ExpiryWarningSentAt') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [ExpiryWarningSentAt] DATETIME2 NULL;
             
             IF NOT EXISTS (
                     SELECT 1

@@ -16,6 +16,12 @@ namespace Dormitory.Models.Entities
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public string Status { get; set; } = "Active";
+        public string PdfFileName { get; set; } = string.Empty;
+        public string PdfContentType { get; set; } = string.Empty;
+        public string PdfStoragePath { get; set; } = string.Empty;
+        public string PdfPublicUrl { get; set; } = string.Empty;
+        public DateTime? PdfUploadedAt { get; set; }
+        public DateTime? ExpiryWarningSentAt { get; set; }
 
         public Students? Student { get; set; }
         public Rooms? Room { get; set; }

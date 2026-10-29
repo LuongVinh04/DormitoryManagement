@@ -1,6 +1,7 @@
 using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Services;
+using DormitoryManagement.Services.Contracts;
 using DormitoryManagement.Services.Facilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,10 @@ namespace DormitoryManagement.Controllers.StudentPortal;
 
 [ApiController]
 [Route("api/student-portal")]
-public class StudentPortalController(AppDbContext db, VnPayService vnPayService) : ControllerBase
+public class StudentPortalController(
+    AppDbContext db,
+    VnPayService vnPayService,
+    ContractFileStorageService contractFileStorage) : ControllerBase
 {
     // ── Đăng ký tài khoản sinh viên ─────────────────────────────────
 
@@ -234,6 +238,84 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
             .ToListAsync();
 
         return Ok(new { shares, invoices, roommateShares });
+    }
+
+    [HttpGet("contracts")]
+    [Authorize]
+    public async Task<IActionResult> GetMyContracts()
+    {
+        var student = await GetCurrentStudent();
+        if (student is null) return Unauthorized();
+
+        var today = DateTime.Today;
+        var contracts = await db.Contracts
+            .Where(x => x.StudentId == student.Id)
+            .OrderByDescending(x => x.StartDate)
+            .Select(x => new
+            {
+                x.Id,
+                x.ContractCode,
+                x.DepositAmount,
+                x.MonthlyFee,
+                x.StartDate,
+                x.EndDate,
+                x.Status,
+                daysUntilExpiry = EF.Functions.DateDiffDay(today, x.EndDate),
+                isExpired = x.EndDate.Date < today || x.Status == "Expired" || x.Status == "Cancelled",
+                isExpiringSoon = x.Status == "Active" && x.EndDate.Date >= today && x.EndDate.Date <= today.AddDays(7),
+                hasPdf = x.PdfPublicUrl != "" || x.PdfStoragePath != "",
+                x.PdfFileName,
+                viewUrl = $"/api/student-portal/contracts/{x.Id}/pdf/view",
+                downloadUrl = $"/api/student-portal/contracts/{x.Id}/pdf/download"
+            })
+            .ToListAsync();
+
+        return Ok(contracts);
+    }
+
+    [HttpGet("contracts/{id:int}/pdf/view")]
+    [Authorize]
+    public async Task<IActionResult> ViewMyContractPdf(int id)
+    {
+        var contract = await GetOwnedContractAsync(id);
+        if (contract is null) return NotFound();
+
+        var localFile = contractFileStorage.GetLocalFile(contract);
+        if (localFile is not null)
+        {
+            return PhysicalFile(localFile.FullName, "application/pdf", enableRangeProcessing: true);
+        }
+
+        if (!string.IsNullOrWhiteSpace(contract.PdfPublicUrl))
+        {
+            return Redirect(contract.PdfPublicUrl);
+        }
+
+        return NotFound(new { message = "Hợp đồng chưa có file PDF." });
+    }
+
+    [HttpGet("contracts/{id:int}/pdf/download")]
+    [Authorize]
+    public async Task<IActionResult> DownloadMyContractPdf(int id)
+    {
+        var contract = await GetOwnedContractAsync(id);
+        if (contract is null) return NotFound();
+
+        var fileName = string.IsNullOrWhiteSpace(contract.PdfFileName)
+            ? $"{contract.ContractCode}.pdf"
+            : contract.PdfFileName;
+        var localFile = contractFileStorage.GetLocalFile(contract);
+        if (localFile is not null)
+        {
+            return PhysicalFile(localFile.FullName, "application/pdf", fileName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(contract.PdfPublicUrl))
+        {
+            return Redirect(contract.PdfPublicUrl);
+        }
+
+        return NotFound(new { message = "Hợp đồng chưa có file PDF." });
     }
 
     [HttpPost("invoices/{invoiceId:int}/vnpay/create")]
@@ -817,6 +899,17 @@ public class StudentPortalController(AppDbContext db, VnPayService vnPayService)
 
         var user = await db.Users.Include(x => x.Student).FirstOrDefaultAsync(x => x.Id == userId);
         return user?.Student;
+    }
+
+    private async Task<Contract?> GetOwnedContractAsync(int id)
+    {
+        var student = await GetCurrentStudent();
+        if (student is null)
+        {
+            return null;
+        }
+
+        return await db.Contracts.FirstOrDefaultAsync(x => x.Id == id && x.StudentId == student.Id);
     }
 }
 

@@ -1,22 +1,30 @@
-import { useEffect, useRef, useState } from 'react'
-import { CrudPanel, Panel } from '../../components'
-import { apiFetch, currencyFormat, numberFormat, readError, shortDate } from '../../helpers'
+import { useEffect, useRef, useState } from "react";
+import { CrudPanel, Panel } from "../../components";
+import {
+  apiFetch,
+  currencyFormat,
+  numberFormat,
+  readError,
+  shortDate,
+} from "../../helpers";
 
 function downloadExcel(url, filename) {
-  apiFetch(url).then(res => res.blob()).then(blob => {
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(a.href)
-  })
+  apiFetch(url)
+    .then((res) => res.blob())
+    .then((blob) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
 }
 
 function statusLabel(status) {
-  if (status === 'Paid') return 'Đã nộp'
-  if (status === 'PartiallyPaid') return 'Một phần'
-  if (status === 'Late') return 'Quá hạn'
-  return 'Chưa nộp'
+  if (status === "Paid") return "Đã thanh toán";
+  if (status === "PartiallyPaid") return "Thanh toán một phần";
+  if (status === "Late") return "Quá hạn";
+  return "Chưa thanh toán";
 }
 
 export function FinanceSection({
@@ -29,77 +37,129 @@ export function FinanceSection({
   getPanelProps,
   refreshData,
 }) {
-  const [selectedRecord, setSelectedRecord] = useState(null)
-  const [shares, setShares] = useState([])
-  const [shareForms, setShareForms] = useState({})
-  const [shareError, setShareError] = useState('')
-  const [shareNotice, setShareNotice] = useState('')
-  const [shareLoading, setShareLoading] = useState(false)
-  const [vnPayDialog, setVnPayDialog] = useState(null)
-  const [vnPayLoading, setVnPayLoading] = useState(false)
-  const sharePanelRef = useRef(null)
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [shares, setShares] = useState([]);
+  const [shareForms, setShareForms] = useState({});
+  const [shareError, setShareError] = useState("");
+  const [shareNotice, setShareNotice] = useState("");
+  const [shareLoading, setShareLoading] = useState(false);
+  const [vnPayDialog, setVnPayDialog] = useState(null);
+  const [vnPayLoading, setVnPayLoading] = useState(false);
+  const sharePanelRef = useRef(null);
 
-  const totalExpected = data.roomFinances.reduce((sum, item) => sum + Number(item.total ?? 0), 0)
-  const totalCollected = data.roomFinances.reduce((sum, item) => sum + Number(item.paidAmount ?? 0), 0)
-  const totalOutstanding = Math.max(0, totalExpected - totalCollected)
-  const paidRooms = data.roomFinances.filter((item) => item.status === 'Paid').length
-  const partialRooms = data.roomFinances.filter((item) => item.status === 'PartiallyPaid').length
-  const lateRooms = data.roomFinances.filter((item) => item.status === 'Late').length
-  const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0
-  const supportedPaymentMethods = data.paymentMethods.filter((method) => ['CASH', 'VNPAY'].includes(String(method.code).toUpperCase()))
-  const collectionPaymentMethods = supportedPaymentMethods.some((method) => String(method.code).toUpperCase() === 'CASH')
+  const fallbackTotalExpected = data.roomFinances.reduce(
+    (sum, item) => sum + Number(item.total ?? 0),
+    0,
+  );
+  const fallbackTotalCollected = data.roomFinances.reduce(
+    (sum, item) => sum + Number(item.paidAmount ?? 0),
+    0,
+  );
+  const totalExpected = Number(
+    financeSummary?.totalExpected ?? fallbackTotalExpected,
+  );
+  const totalCollected = Number(
+    financeSummary?.collected ?? fallbackTotalCollected,
+  );
+  const totalOutstanding = Math.max(
+    0,
+    Number(financeSummary?.outstanding ?? totalExpected - totalCollected),
+  );
+  const paidRooms =
+    financeSummary?.paidRooms ??
+    data.roomFinances.filter((item) => item.status === "Paid").length;
+  const partialRooms =
+    financeSummary?.partialRooms ??
+    data.roomFinances.filter((item) => item.status === "PartiallyPaid").length;
+  const lateRooms =
+    financeSummary?.lateRooms ??
+    data.roomFinances.filter((item) => item.status === "Late").length;
+  const unpaidRooms =
+    financeSummary?.unpaidRooms ??
+    data.roomFinances.filter((item) => item.status !== "Paid").length;
+  const collectionRate =
+    totalExpected > 0
+      ? Math.min(100, Math.round((totalCollected / totalExpected) * 100))
+      : 0;
+  const supportedPaymentMethods = data.paymentMethods.filter((method) =>
+    ["CASH", "VNPAY"].includes(String(method.code).toUpperCase()),
+  );
+  const collectionPaymentMethods = supportedPaymentMethods.some(
+    (method) => String(method.code).toUpperCase() === "CASH",
+  )
     ? supportedPaymentMethods
-    : [{ id: 'cash-fallback', code: 'Cash', name: 'Tiền mặt' }, ...supportedPaymentMethods]
+    : [
+        { id: "cash-fallback", code: "Cash", name: "Tiền mặt" },
+        ...supportedPaymentMethods,
+      ];
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const paymentStatus = params.get('paymentStatus')
-    const message = params.get('message')
-    if (paymentStatus === 'success') {
-      setShareNotice(message || 'Thanh toán VNPay thành công. Hệ thống đã ghi nhận đã thu tiền.')
-      refreshData?.()
-      window.history.replaceState({}, '', window.location.pathname)
-    } else if (paymentStatus === 'failed') {
-      setShareError(message || 'Thanh toán VNPay chưa thành công.')
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, [refreshData])
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("paymentStatus");
+    const message = params.get("message");
+
+    queueMicrotask(() => {
+      if (paymentStatus === "success") {
+        setShareNotice(
+          message ||
+            "Thanh toán VNPay thành công. Hệ thống đã ghi nhận đã thu tiền.",
+        );
+        refreshData?.();
+        window.history.replaceState({}, "", window.location.pathname);
+      } else if (paymentStatus === "failed") {
+        setShareError(message || "Thanh toán VNPay chưa thành công.");
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    });
+  }, [refreshData]);
 
   function scrollToSharePanel() {
     window.setTimeout(() => {
-      sharePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 80)
+      sharePanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
   }
 
   async function loadShares(record, options = {}) {
-    const { clearNotice = true, scroll = true } = options
+    const { clearNotice = true, scroll = true } = options;
     try {
-      setShareLoading(true)
-      setShareError('')
-      if (clearNotice) setShareNotice('')
-      setSelectedRecord(record)
-      const response = await apiFetch(`/api/operations/room-finances/${record.id}/shares`)
+      setShareLoading(true);
+      setShareError("");
+      if (clearNotice) setShareNotice("");
+      setSelectedRecord(record);
+      const response = await apiFetch(
+        `/api/operations/room-finances/${record.id}/shares`,
+      );
       if (!response.ok) {
-        throw new Error(await readError(response))
+        throw new Error(await readError(response));
       }
 
-      const items = await response.json()
-      setShares(items)
-      setShareForms(Object.fromEntries(items.map((item) => [
-        item.id,
-        {
-          expectedAmount: item.expectedAmount,
-          paidAmount: Math.max(0, Number(item.remainingAmount ?? item.expectedAmount ?? 0)),
-          paymentMethod: item.paymentMethod || '',
-          note: item.note || '',
-        },
-      ])))
-      if (scroll) scrollToSharePanel()
+      const items = await response.json();
+      setShares(items);
+      setShareForms(
+        Object.fromEntries(
+          items.map((item) => [
+            item.id,
+            {
+              expectedAmount: item.expectedAmount,
+              paidAmount: Math.max(
+                0,
+                Number(item.remainingAmount ?? item.expectedAmount ?? 0),
+              ),
+              paymentMethod: item.paymentMethod || "",
+              note: item.note || "",
+            },
+          ]),
+        ),
+      );
+      if (scroll) scrollToSharePanel();
     } catch (error) {
-      setShareError(error.message)
-      if (scroll) scrollToSharePanel()
+      setShareError(error.message);
+      if (scroll) scrollToSharePanel();
     } finally {
-      setShareLoading(false)
+      setShareLoading(false);
     }
   }
 
@@ -110,160 +170,203 @@ export function FinanceSection({
         ...(current[id] || {}),
         [field]: value,
       },
-    }))
+    }));
   }
 
   function selectPaymentMethod(share, method) {
-    updateShareForm(share.id, 'paymentMethod', method)
-    if (method === 'VNPAY') {
-      const form = shareForms[share.id] || {}
+    updateShareForm(share.id, "paymentMethod", method);
+    if (method === "VNPAY") {
+      const form = shareForms[share.id] || {};
       setVnPayDialog({
         share,
         amount: Number(form.paidAmount || share.remainingAmount || 0),
-      })
+      });
     }
   }
 
   async function generateShares(record = selectedRecord) {
-    if (!record) return
+    if (!record) return;
     try {
-      setShareLoading(true)
-      setShareError('')
-      setShareNotice('')
-      setSelectedRecord(record)
-      scrollToSharePanel()
+      setShareLoading(true);
+      setShareError("");
+      setShareNotice("");
+      setSelectedRecord(record);
+      scrollToSharePanel();
 
-      const response = await apiFetch(`/api/operations/room-finances/${record.id}/generate-shares`, { method: 'POST' })
+      const response = await apiFetch(
+        `/api/operations/room-finances/${record.id}/generate-shares`,
+        { method: "POST" },
+      );
       if (!response.ok) {
-        throw new Error(await readError(response))
+        throw new Error(await readError(response));
       }
 
-      setShareNotice('Đã chia tiền và tạo hóa đơn riêng cho từng sinh viên trong phòng.')
-      await refreshData?.()
-      await loadShares(record, { clearNotice: false, scroll: true })
+      setShareNotice(
+        "Đã chia tiền và tạo hóa đơn riêng cho từng sinh viên trong phòng.",
+      );
+      await refreshData?.();
+      await loadShares(record, { clearNotice: false, scroll: true });
     } catch (error) {
-      setShareError(error.message)
-      scrollToSharePanel()
+      setShareError(error.message);
+      scrollToSharePanel();
     } finally {
-      setShareLoading(false)
+      setShareLoading(false);
     }
   }
 
   async function adjustShare(share) {
-    const form = shareForms[share.id] || {}
+    const form = shareForms[share.id] || {};
     try {
-      setShareError('')
-      setShareNotice('')
-      const response = await apiFetch(`/api/operations/room-finance-shares/${share.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          expectedAmount: Number(form.expectedAmount || 0),
-          note: form.note || '',
-        }),
-      })
+      setShareError("");
+      setShareNotice("");
+      const response = await apiFetch(
+        `/api/operations/room-finance-shares/${share.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            expectedAmount: Number(form.expectedAmount || 0),
+            note: form.note || "",
+          }),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error(await readError(response))
+        throw new Error(await readError(response));
       }
 
-      setShareNotice(`Đã cập nhật phần tiền của ${share.studentName}.`)
-      await refreshData?.()
-      await loadShares(selectedRecord)
+      setShareNotice(`Đã cập nhật phần tiền của ${share.studentName}.`);
+      await refreshData?.();
+      await loadShares(selectedRecord);
     } catch (error) {
-      setShareError(error.message)
+      setShareError(error.message);
     }
   }
 
   async function payShare(share) {
-    const form = shareForms[share.id] || {}
-    if ((form.paymentMethod || '') !== 'Cash') {
-      setShareError('Vui lòng chọn Tiền mặt để xác nhận đã thu tại quầy.')
-      return
+    const form = shareForms[share.id] || {};
+    if ((form.paymentMethod || "") !== "Cash") {
+      setShareError("Vui lòng chọn Tiền mặt để xác nhận đã thu tại quầy.");
+      return;
     }
 
     try {
-      setShareError('')
-      setShareNotice('')
-      const response = await apiFetch(`/api/operations/room-finance-shares/${share.id}/mark-paid`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paidAmount: Number(form.paidAmount || 0),
-          paidDate: new Date().toISOString(),
-          paymentMethod: 'Cash',
-          note: form.note || 'Thu tiền theo phần chia sinh viên.',
-        }),
-      })
+      setShareError("");
+      setShareNotice("");
+      const response = await apiFetch(
+        `/api/operations/room-finance-shares/${share.id}/mark-paid`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paidAmount: Number(form.paidAmount || 0),
+            paidDate: new Date().toISOString(),
+            paymentMethod: "Cash",
+            note: form.note || "Thu tiền theo phần chia sinh viên.",
+          }),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error(await readError(response))
+        throw new Error(await readError(response));
       }
 
-      setShareNotice(`Đã ghi nhận thanh toán của ${share.studentName}.`)
-      await refreshData?.()
-      await loadShares(selectedRecord)
+      setShareNotice(`Đã ghi nhận thanh toán của ${share.studentName}.`);
+      await refreshData?.();
+      await loadShares(selectedRecord);
     } catch (error) {
-      setShareError(error.message)
+      setShareError(error.message);
     }
   }
 
   async function startVnPayPayment() {
-    if (!vnPayDialog?.share) return
+    if (!vnPayDialog?.share) return;
     try {
-      setVnPayLoading(true)
-      setShareError('')
-      setShareNotice('')
-      const response = await apiFetch(`/api/operations/room-finance-shares/${vnPayDialog.share.id}/vnpay/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
+      setVnPayLoading(true);
+      setShareError("");
+      setShareNotice("");
+      const response = await apiFetch(
+        `/api/operations/room-finance-shares/${vnPayDialog.share.id}/vnpay/create`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
       if (!response.ok) {
-        throw new Error(await readError(response))
+        throw new Error(await readError(response));
       }
 
-      const data = await response.json()
+      const data = await response.json();
       if (!data.paymentUrl) {
-        throw new Error('API không trả về link thanh toán VNPay.')
+        throw new Error("API không trả về link thanh toán VNPay.");
       }
 
-      setShares((currentShares) => currentShares.map((share) => share.id === vnPayDialog.share.id
-        ? {
-          ...share,
-          invoiceId: data.invoiceId ?? share.invoiceId,
-          invoiceCode: data.invoiceCode ?? share.invoiceCode,
-          invoiceStatus: data.invoiceCode ? share.invoiceStatus || 'Unpaid' : share.invoiceStatus,
-        }
-        : share))
-      setVnPayDialog((current) => current
-        ? {
-          ...current,
-          paymentUrl: data.paymentUrl,
-          amount: data.amount ?? current.amount,
-          invoiceId: data.invoiceId ?? current.invoiceId,
-          invoiceCode: data.invoiceCode ?? current.share.invoiceCode,
-          share: {
-            ...current.share,
-            invoiceId: data.invoiceId ?? current.share.invoiceId,
-            invoiceCode: data.invoiceCode ?? current.share.invoiceCode,
-          },
-        }
-        : current)
-      setShareNotice('Đã tạo link thanh toán VNPay. Vui lòng mở cổng thanh toán để hoàn tất giao dịch.')
-      setVnPayLoading(false)
+      setShares((currentShares) =>
+        currentShares.map((share) =>
+          share.id === vnPayDialog.share.id
+            ? {
+                ...share,
+                invoiceId: data.invoiceId ?? share.invoiceId,
+                invoiceCode: data.invoiceCode ?? share.invoiceCode,
+                invoiceStatus: data.invoiceCode
+                  ? share.invoiceStatus || "Unpaid"
+                  : share.invoiceStatus,
+              }
+            : share,
+        ),
+      );
+      setVnPayDialog((current) =>
+        current
+          ? {
+              ...current,
+              paymentUrl: data.paymentUrl,
+              amount: data.amount ?? current.amount,
+              invoiceId: data.invoiceId ?? current.invoiceId,
+              invoiceCode: data.invoiceCode ?? current.share.invoiceCode,
+              share: {
+                ...current.share,
+                invoiceId: data.invoiceId ?? current.share.invoiceId,
+                invoiceCode: data.invoiceCode ?? current.share.invoiceCode,
+              },
+            }
+          : current,
+      );
+      setShareNotice(
+        "Đã tạo link thanh toán VNPay. Vui lòng mở cổng thanh toán để hoàn tất giao dịch.",
+      );
+      setVnPayLoading(false);
     } catch (error) {
-      setShareError(error.message)
-      setVnPayDialog(null)
-      setVnPayLoading(false)
+      setShareError(error.message);
+      setVnPayDialog(null);
+      setVnPayLoading(false);
     }
   }
 
   return (
     <>
       <div className="section-toolbar">
-        <button className="secondary-button" onClick={() => downloadExcel('/api/export/students', 'danh-sach-sinh-vien.xlsx')}>Xuất Excel sinh viên</button>
-        <button className="secondary-button" onClick={() => downloadExcel('/api/export/room-finances', 'cong-no-phong.xlsx')}>Xuất Excel công nợ</button>
-        <button className="secondary-button" onClick={() => downloadExcel('/api/export/invoices', 'hoa-don.xlsx')}>Xuất Excel hóa đơn</button>
+        <button
+          className="secondary-button"
+          onClick={() =>
+            downloadExcel("/api/export/students", "danh-sach-sinh-vien.xlsx")
+          }
+        >
+          Xuất Excel sinh viên
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() =>
+            downloadExcel("/api/export/room-finances", "cong-no-phong.xlsx")
+          }
+        >
+          Xuất Excel công nợ
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() => downloadExcel("/api/export/invoices", "hoa-don.xlsx")}
+        >
+          Xuất Excel hóa đơn
+        </button>
       </div>
       <CrudPanel
         entityKey="utilities"
@@ -271,12 +374,20 @@ export function FinanceSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={getPanelProps('finance-utilities')}
+        panelProps={getPanelProps("finance-utilities")}
         extraRowActions={(item) => [
           {
-            label: 'Tạo hóa đơn',
-            kind: 'approve',
-            onClick: () => executeAction(() => apiFetch(`/api/operations/utilities/${item.id}/generate-invoices`, { method: 'POST' }), 'Đã tạo hóa đơn từ kỳ điện nước.'),
+            label: "Tạo hóa đơn",
+            kind: "approve",
+            onClick: () =>
+              executeAction(
+                () =>
+                  apiFetch(
+                    `/api/operations/utilities/${item.id}/generate-invoices`,
+                    { method: "POST" },
+                  ),
+                "Đã tạo hóa đơn từ kỳ điện nước.",
+              ),
           },
         ]}
       />
@@ -287,30 +398,44 @@ export function FinanceSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={{ ...getPanelProps('finance-invoices'), panelId: 'panel-finance-invoices' }}
+        panelProps={{
+          ...getPanelProps("finance-invoices"),
+          panelId: "panel-finance-invoices",
+        }}
         extraRowActions={(item) => [
-          item.status !== 'Paid'
+          item.status !== "Paid"
             ? {
-              label: 'Thu tiền',
-              kind: 'approve',
-              onClick: () =>
-                executeAction(
-                  () =>
-                    apiFetch(`/api/operations/invoices/${item.id}/mark-paid`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ paidDate: new Date().toISOString() }),
-                    }),
-                  'Đã ghi nhận thanh toán hóa đơn.',
-                ),
-            }
+                label: "Thu tiền",
+                kind: "approve",
+                onClick: () =>
+                  executeAction(
+                    () =>
+                      apiFetch(
+                        `/api/operations/invoices/${item.id}/mark-paid`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            paidDate: new Date().toISOString(),
+                          }),
+                        },
+                      ),
+                    "Đã ghi nhận thanh toán hóa đơn.",
+                  ),
+              }
             : null,
         ]}
       />
 
-      <Panel title="Tổng quan tài chính theo phòng" description="Doanh thu tháng đang thể hiện tổng tiền phải thu của các kỳ tài chính hiện có. Khối này giúp nhìn rõ tiền đã thu, còn nợ và trạng thái từng phòng." {...getPanelProps('finance-summary')}>
+      <Panel
+        title="Tổng quan tài chính theo phòng"
+        description="Tổng hợp công nợ phòng đang hiển thị, bao gồm tiền đã thu, còn phải thu và trạng thái thanh toán."
+        {...getPanelProps("finance-summary")}
+      >
         <div className="finance-caption">
-          {financeSummary?.billingMonth ? `Kỳ theo dõi: ${new Intl.DateTimeFormat('vi-VN', { month: '2-digit', year: 'numeric' }).format(new Date(financeSummary.billingMonth))}` : 'Theo dõi tổng hợp công nợ theo từng phòng.'}
+          {financeSummary?.billingMonth
+            ? `Kỳ mới nhất: ${new Intl.DateTimeFormat("vi-VN", { month: "2-digit", year: "numeric" }).format(new Date(financeSummary.billingMonth))}`
+            : "Theo dõi tổng hợp công nợ theo từng phòng."}
         </div>
         <div className="finance-highlight-grid">
           <article className="finance-highlight-card blue">
@@ -350,7 +475,7 @@ export function FinanceSection({
           </div>
           <div className="summary-block">
             <span>Phòng còn công nợ</span>
-            <strong>{numberFormat.format(data.roomFinances.filter((item) => item.status !== 'Paid').length)}</strong>
+            <strong>{numberFormat.format(unpaidRooms)}</strong>
           </div>
         </div>
       </Panel>
@@ -361,7 +486,7 @@ export function FinanceSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={getPanelProps('finance-room-fee-profiles')}
+        panelProps={getPanelProps("finance-room-fee-profiles")}
       />
 
       <CrudPanel
@@ -370,51 +495,64 @@ export function FinanceSection({
         onCreate={openCreate}
         onEdit={openEdit}
         onDelete={deleteEntity}
-        panelProps={{ ...getPanelProps('finance-room-finances'), panelId: 'panel-finance-room-finances' }}
+        panelProps={{
+          ...getPanelProps("finance-room-finances"),
+          panelId: "panel-finance-room-finances",
+        }}
         extraRowActions={(item) => [
           item.shareCount === 0
             ? {
-              label: 'Chia tiền SV',
-              kind: 'approve',
-              onClick: () => generateShares(item),
-            }
+                label: "Chia tiền SV",
+                kind: "approve",
+                onClick: () => generateShares(item),
+              }
             : {
-              label: 'Xem phần chia',
-              kind: 'approve',
-              onClick: () => loadShares(item),
-            },
+                label: "Xem phần chia",
+                kind: "approve",
+                onClick: () => loadShares(item),
+              },
           item.utilityId
             ? {
-              label: 'Đồng bộ từ điện nước',
-              kind: 'approve',
-              onClick: () =>
-                executeAction(
-                  () => apiFetch(`/api/operations/room-finances/generate-from-utility/${item.utilityId}`, { method: 'POST' }),
-                  'Đã cập nhật công nợ phòng từ dữ liệu điện nước.',
-                ),
-            }
+                label: "Đồng bộ từ điện nước",
+                kind: "approve",
+                onClick: () =>
+                  executeAction(
+                    () =>
+                      apiFetch(
+                        `/api/operations/room-finances/generate-from-utility/${item.utilityId}`,
+                        { method: "POST" },
+                      ),
+                    "Đã cập nhật công nợ phòng từ dữ liệu điện nước.",
+                  ),
+              }
             : null,
-          item.status !== 'Paid'
+          item.status !== "Paid"
             ? {
-              label: 'Đánh dấu đã thu',
-              kind: 'approve',
-              onClick: () =>
-                executeAction(
-                  () =>
-                    apiFetch(`/api/operations/room-finances/${item.id}/mark-paid`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        paidAmount: Number(item.remainingAmount ?? item.total ?? 0),
-                        paidDate: new Date().toISOString(),
-                        paymentMethod: 'Cash',
-                        paymentNote: 'Đã thu tiền phòng từ giao diện tài chính.',
-                        recordedBy: 'Kế toán',
-                      }),
-                    }),
-                  'Đã ghi nhận phòng đã nộp tiền.',
-                ),
-            }
+                label: "Đánh dấu đã thu",
+                kind: "approve",
+                onClick: () =>
+                  executeAction(
+                    () =>
+                      apiFetch(
+                        `/api/operations/room-finances/${item.id}/mark-paid`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            paidAmount: Number(
+                              item.remainingAmount ?? item.total ?? 0,
+                            ),
+                            paidDate: new Date().toISOString(),
+                            paymentMethod: "Cash",
+                            paymentNote:
+                              "Đã thu tiền phòng từ giao diện tài chính.",
+                            recordedBy: "Kế toán",
+                          }),
+                        },
+                      ),
+                    "Đã ghi nhận phòng đã nộp tiền.",
+                  ),
+              }
             : null,
         ]}
       />
@@ -424,25 +562,41 @@ export function FinanceSection({
           <Panel
             title={`Chi tiết thu tiền sinh viên - phòng ${selectedRecord.roomNumber}`}
             description="Theo dõi phần tiền từng sinh viên, chỉnh số phải nộp và ghi nhận thanh toán theo từng người."
-            {...getPanelProps('finance-student-shares')}
+            {...getPanelProps("finance-student-shares")}
           >
-            {shareError ? <div className="feedback error">{shareError}</div> : null}
-            {shareNotice ? <div className="feedback success">{shareNotice}</div> : null}
+            {shareError ? (
+              <div className="feedback error">{shareError}</div>
+            ) : null}
+            {shareNotice ? (
+              <div className="feedback success">{shareNotice}</div>
+            ) : null}
             <div className="finance-share-summary">
               <div className="summary-block">
                 <span>Kỳ công nợ</span>
-                <strong>{selectedRecord.billingMonth ? shortDate(selectedRecord.billingMonth) : '-'}</strong>
+                <strong>
+                  {selectedRecord.billingMonth
+                    ? shortDate(selectedRecord.billingMonth)
+                    : "-"}
+                </strong>
               </div>
               <div className="summary-block">
                 <span>Tổng phòng</span>
-                <strong>{currencyFormat.format(selectedRecord.total || 0)}</strong>
+                <strong>
+                  {currencyFormat.format(selectedRecord.total || 0)}
+                </strong>
               </div>
               <div className="summary-block">
                 <span>Đã thu phòng</span>
-                <strong>{currencyFormat.format(selectedRecord.paidAmount || 0)}</strong>
+                <strong>
+                  {currencyFormat.format(selectedRecord.paidAmount || 0)}
+                </strong>
               </div>
-              <button className="secondary-button" onClick={() => loadShares(selectedRecord)} disabled={shareLoading}>
-                {shareLoading ? 'Đang tải...' : 'Làm mới phần chia'}
+              <button
+                className="secondary-button"
+                onClick={() => loadShares(selectedRecord)}
+                disabled={shareLoading}
+              >
+                {shareLoading ? "Đang tải..." : "Làm mới phần chia"}
               </button>
             </div>
 
@@ -450,8 +604,14 @@ export function FinanceSection({
               <div className="empty-state">
                 Chưa có phần chia cho sinh viên trong phòng này.
                 <div style={{ marginTop: 12 }}>
-                  <button className="primary-button" onClick={() => generateShares()} disabled={shareLoading}>
-                    {shareLoading ? 'Đang chia tiền...' : 'Chia tiền cho sinh viên'}
+                  <button
+                    className="primary-button"
+                    onClick={() => generateShares()}
+                    disabled={shareLoading}
+                  >
+                    {shareLoading
+                      ? "Đang chia tiền..."
+                      : "Chia tiền cho sinh viên"}
                   </button>
                 </div>
               </div>
@@ -472,61 +632,141 @@ export function FinanceSection({
                   </thead>
                   <tbody>
                     {shares.map((share) => {
-                      const form = shareForms[share.id] || {}
+                      const form = shareForms[share.id] || {};
                       return (
                         <tr key={share.id}>
                           <td data-label="Sinh viên">
                             <strong>{share.studentName}</strong>
-                            <span className="muted-line">{share.studentCode}</span>
+                            <span className="muted-line">
+                              {share.studentCode}
+                            </span>
                           </td>
                           <td data-label="Hóa đơn">
-                            <strong>{share.invoiceCode || '-'}</strong>
-                            <span className="muted-line">{share.invoiceStatus || '-'}</span>
+                            <strong>{share.invoiceCode || "-"}</strong>
+                            <span className="muted-line">
+                              {share.invoiceStatus || "-"}
+                            </span>
                           </td>
                           <td data-label="Phải nộp">
-                            <input type="number" min="0" value={form.expectedAmount ?? ''} onChange={(event) => updateShareForm(share.id, 'expectedAmount', event.target.value)} />
+                            <input
+                              type="number"
+                              min="0"
+                              value={form.expectedAmount ?? ""}
+                              onChange={(event) =>
+                                updateShareForm(
+                                  share.id,
+                                  "expectedAmount",
+                                  event.target.value,
+                                )
+                              }
+                            />
                           </td>
-                          <td data-label="Đã nộp">{currencyFormat.format(share.paidAmount || 0)}</td>
-                          <td data-label="Còn lại">{currencyFormat.format(share.remainingAmount || 0)}</td>
+                          <td data-label="Đã nộp">
+                            {currencyFormat.format(share.paidAmount || 0)}
+                          </td>
+                          <td data-label="Còn lại">
+                            {currencyFormat.format(share.remainingAmount || 0)}
+                          </td>
                           <td data-label="Trạng thái">
-                            <span className={`table-badge ${share.status === 'Paid' ? 'emerald' : share.status === 'PartiallyPaid' ? 'amber' : 'rose'}`}>
+                            <span
+                              className={`table-badge ${share.status === "Paid" ? "emerald" : share.status === "PartiallyPaid" ? "amber" : "rose"}`}
+                            >
                               {statusLabel(share.status)}
                             </span>
                           </td>
                           <td data-label="Ghi nhận">
                             <div className="share-payment-fields">
-                              <input type="number" min="0" value={form.paidAmount ?? ''} onChange={(event) => updateShareForm(share.id, 'paidAmount', event.target.value)} placeholder="Số tiền thu" />
-                              <div className="payment-method-picker" aria-label="Hình thức thu">
+                              <input
+                                type="number"
+                                min="0"
+                                value={form.paidAmount ?? ""}
+                                onChange={(event) =>
+                                  updateShareForm(
+                                    share.id,
+                                    "paidAmount",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Số tiền thu"
+                              />
+                              <div
+                                className="payment-method-picker"
+                                aria-label="Hình thức thu"
+                              >
                                 {collectionPaymentMethods.map((method) => {
-                                  const code = String(method.code).toUpperCase()
-                                  const value = code === 'VNPAY' ? 'VNPAY' : 'Cash'
-                                  const active = (form.paymentMethod || '') === value
+                                  const code = String(
+                                    method.code,
+                                  ).toUpperCase();
+                                  const value =
+                                    code === "VNPAY" ? "VNPAY" : "Cash";
+                                  const active =
+                                    (form.paymentMethod || "") === value;
                                   return (
                                     <button
                                       key={method.id}
                                       type="button"
-                                      className={active ? 'payment-method-option active' : 'payment-method-option'}
-                                      onClick={() => selectPaymentMethod(share, value)}
+                                      className={
+                                        active
+                                          ? "payment-method-option active"
+                                          : "payment-method-option"
+                                      }
+                                      onClick={() =>
+                                        selectPaymentMethod(share, value)
+                                      }
                                     >
-                                      {value === 'VNPAY' ? <img src="/vnpay-logo.svg" alt="" aria-hidden="true" /> : <span className="cash-method-icon">₫</span>}
-                                      <span>{value === 'VNPAY' ? 'VNPay' : 'Tiền mặt'}</span>
+                                      {value === "VNPAY" ? (
+                                        <img
+                                          src="/vnpay-logo.svg"
+                                          alt=""
+                                          aria-hidden="true"
+                                        />
+                                      ) : (
+                                        <span className="cash-method-icon">
+                                          ₫
+                                        </span>
+                                      )}
+                                      <span>
+                                        {value === "VNPAY"
+                                          ? "VNPay"
+                                          : "Tiền mặt"}
+                                      </span>
                                     </button>
-                                  )
+                                  );
                                 })}
                               </div>
-                              <input value={form.note || ''} onChange={(event) => updateShareForm(share.id, 'note', event.target.value)} placeholder="Ghi chú" />
+                              <input
+                                value={form.note || ""}
+                                onChange={(event) =>
+                                  updateShareForm(
+                                    share.id,
+                                    "note",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Ghi chú"
+                              />
                             </div>
                           </td>
                           <td data-label="Thao tác">
                             <div className="action-row">
-                              <button className="ghost-button" onClick={() => adjustShare(share)}>Lưu phần tiền</button>
-                              {(form.paymentMethod || '') === 'Cash' ? (
-                                <button className="ghost-button approve" onClick={() => payShare(share)}>Xác nhận đã thu</button>
+                              <button
+                                className="ghost-button"
+                                onClick={() => adjustShare(share)}
+                              >
+                                Lưu phần tiền
+                              </button>
+                              {(form.paymentMethod || "") === "Cash" ? (
+                                <button
+                                  className="ghost-button approve"
+                                  onClick={() => payShare(share)}
+                                >
+                                  Xác nhận đã thu
+                                </button>
                               ) : null}
                             </div>
                           </td>
                         </tr>
-                      )
+                      );
                     })}
                   </tbody>
                 </table>
@@ -537,15 +777,28 @@ export function FinanceSection({
       ) : null}
 
       {vnPayDialog ? (
-        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !vnPayLoading) setVnPayDialog(null)
-        }}>
-          <div className="modal-card vnpay-payment-modal" role="dialog" aria-modal="true" aria-labelledby="vnpay-admin-title">
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !vnPayLoading)
+              setVnPayDialog(null);
+          }}
+        >
+          <div
+            className="modal-card vnpay-payment-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vnpay-admin-title"
+          >
             <div className="vnpay-payment-header">
               <img src="/vnpay-logo.svg" alt="VNPay" />
               <div>
                 <h2 id="vnpay-admin-title">Thanh toán qua VNPay</h2>
-                <p>Kiểm tra thông tin khoản thu trước khi mở cổng thanh toán VNPay.</p>
+                <p>
+                  Kiểm tra thông tin khoản thu trước khi mở cổng thanh toán
+                  VNPay.
+                </p>
               </div>
             </div>
             <div className="vnpay-payment-summary">
@@ -555,27 +808,63 @@ export function FinanceSection({
               </div>
               <div>
                 <span>Hóa đơn</span>
-                <strong>{vnPayDialog.invoiceCode || vnPayDialog.share.invoiceCode || '-'}</strong>
+                <strong>
+                  {vnPayDialog.invoiceCode ||
+                    vnPayDialog.share.invoiceCode ||
+                    "-"}
+                </strong>
               </div>
               <div>
                 <span>Số tiền còn lại</span>
-                <strong>{currencyFormat.format(vnPayDialog.share.remainingAmount || vnPayDialog.amount || 0)}</strong>
+                <strong>
+                  {currencyFormat.format(
+                    vnPayDialog.share.remainingAmount ||
+                      vnPayDialog.amount ||
+                      0,
+                  )}
+                </strong>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="secondary-button" onClick={() => setVnPayDialog(null)} disabled={vnPayLoading}>Đóng</button>
+              <button
+                className="secondary-button"
+                onClick={() => setVnPayDialog(null)}
+                disabled={vnPayLoading}
+              >
+                Đóng
+              </button>
               {vnPayDialog.paymentUrl ? (
-                <button className="primary-button" type="button" onClick={() => window.open(vnPayDialog.paymentUrl, '_blank', 'noopener,noreferrer')}>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      vnPayDialog.paymentUrl,
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
+                >
                   Mở cổng VNPay
                 </button>
               ) : null}
               {vnPayDialog.paymentUrl ? (
-                <button className="ghost-button" type="button" onClick={() => refreshData?.()}>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => refreshData?.()}
+                >
                   Làm mới trạng thái
                 </button>
               ) : (
-                <button className="primary-button" onClick={startVnPayPayment} disabled={vnPayLoading}>
-                  {vnPayLoading ? 'Đang tạo link VNPay...' : 'Tạo link thanh toán'}
+                <button
+                  className="primary-button"
+                  onClick={startVnPayPayment}
+                  disabled={vnPayLoading}
+                >
+                  {vnPayLoading
+                    ? "Đang tạo link VNPay..."
+                    : "Tạo link thanh toán"}
                 </button>
               )}
             </div>
@@ -583,5 +872,5 @@ export function FinanceSection({
         </div>
       ) : null}
     </>
-  )
+  );
 }

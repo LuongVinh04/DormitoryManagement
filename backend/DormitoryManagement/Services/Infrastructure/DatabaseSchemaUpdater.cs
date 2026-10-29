@@ -12,6 +12,8 @@ public static class DatabaseSchemaUpdater
             throw new InvalidOperationException("Project hien tai da thong nhat chi su dung SQL Server.");
         }
 
+        await EnsureStatusColumnsAsync(db);
+
         await db.Database.ExecuteSqlRawAsync(
             """
             IF OBJECT_ID(N'dbo.RoomFeeProfiles', N'U') IS NULL
@@ -138,6 +140,48 @@ public static class DatabaseSchemaUpdater
             IF COL_LENGTH('dbo.Rooms', 'RoomZoneId') IS NULL
                 ALTER TABLE [dbo].[Rooms] ADD [RoomZoneId] INT NULL;
 
+            IF COL_LENGTH('dbo.Rooms', 'Status') IS NULL
+                ALTER TABLE [dbo].[Rooms] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Available');
+
+            IF COL_LENGTH('dbo.Buildings', 'RoomCount') IS NULL
+            BEGIN
+                ALTER TABLE [dbo].[Buildings] ADD [RoomCount] INT NOT NULL DEFAULT(0);
+
+                EXEC(N'
+                    UPDATE b
+                    SET [RoomCount] = roomTotals.[RoomCount]
+                    FROM [dbo].[Buildings] b
+                    INNER JOIN (
+                        SELECT [BuildingId], COUNT(*) AS [RoomCount]
+                        FROM [dbo].[Rooms]
+                        GROUP BY [BuildingId]
+                    ) roomTotals ON roomTotals.[BuildingId] = b.[Id];
+                ');
+            END
+
+            IF COL_LENGTH('dbo.Students', 'Status') IS NULL
+                ALTER TABLE [dbo].[Students] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Active');
+
+            IF COL_LENGTH('dbo.Registrations', 'Status') IS NULL
+                ALTER TABLE [dbo].[Registrations] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Pending');
+
+            IF COL_LENGTH('dbo.Contracts', 'Status') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Active');
+
+            IF COL_LENGTH('dbo.Invoices', 'Status') IS NULL
+                ALTER TABLE [dbo].[Invoices] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid');
+
+            IF COL_LENGTH('dbo.RoomFinanceRecords', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomFinanceRecords] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid');
+
+            IF OBJECT_ID(N'dbo.RoomFinanceStudentShares', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomFinanceStudentShares', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomFinanceStudentShares] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid');
+
+            IF OBJECT_ID(N'dbo.RoomTransferRequests', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomTransferRequests', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomTransferRequests] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Pending');
+
             IF COL_LENGTH('dbo.Users', 'StudentId') IS NULL
                 ALTER TABLE [dbo].[Users] ADD [StudentId] INT NULL;
 
@@ -192,21 +236,22 @@ public static class DatabaseSchemaUpdater
                 AND s.[RoomId] IS NOT NULL
                 AND (c.[RoomId] IS NULL OR c.[RoomId] <> s.[RoomId]);
 
+            IF EXISTS (
+                SELECT 1
+                FROM sys.indexes
+                WHERE [name] = N'IX_Contracts_StudentId'
+                    AND object_id = OBJECT_ID(N'dbo.Contracts')
+                    AND is_unique = 1
+            )
+                DROP INDEX [IX_Contracts_StudentId] ON [dbo].[Contracts];
+
             IF NOT EXISTS (
-                    SELECT 1
-                    FROM sys.indexes
-                    WHERE name = N'IX_Contracts_StudentId'
-                        AND object_id = OBJECT_ID(N'dbo.Contracts')
-                )
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM [dbo].[Contracts]
-                    GROUP BY [StudentId]
-                    HAVING COUNT(*) > 1
-                )
-            BEGIN
-                CREATE UNIQUE INDEX [IX_Contracts_StudentId] ON [dbo].[Contracts]([StudentId]);
-            END
+                SELECT 1
+                FROM sys.indexes
+                WHERE [name] = N'IX_Contracts_StudentId'
+                    AND object_id = OBJECT_ID(N'dbo.Contracts')
+            )
+                CREATE INDEX [IX_Contracts_StudentId] ON [dbo].[Contracts]([StudentId]);
 
             IF OBJECT_ID(N'dbo.RoomFinanceStudentShares', N'U') IS NULL
             BEGIN
@@ -273,6 +318,132 @@ public static class DatabaseSchemaUpdater
                     CONSTRAINT [FK_ChatMessages_Receiver] FOREIGN KEY ([ReceiverId]) REFERENCES [dbo].[Users]([Id]) ON DELETE NO ACTION
                 );
             END
+
+            IF OBJECT_ID(N'dbo.ViolationRecords', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ViolationRecords]
+                (
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [StudentId] INT NOT NULL,
+                    [RoomId] INT NULL,
+                    [ViolationType] NVARCHAR(64) NOT NULL DEFAULT(N''),
+                    [Description] NVARCHAR(1000) NOT NULL DEFAULT(N''),
+                    [FineAmount] DECIMAL(18,2) NOT NULL DEFAULT(0),
+                    [TrainingPointDeduction] INT NOT NULL DEFAULT(0),
+                    [ViolationDate] DATETIME2 NOT NULL,
+                    [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Pending'),
+                    [HandledBy] NVARCHAR(160) NOT NULL DEFAULT(N''),
+                    [Note] NVARCHAR(500) NOT NULL DEFAULT(N''),
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT(GETUTCDATE()),
+                    [UpdatedAt] DATETIME2 NULL,
+                    CONSTRAINT [FK_ViolationRecords_Students] FOREIGN KEY ([StudentId]) REFERENCES [dbo].[Students]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_ViolationRecords_Rooms] FOREIGN KEY ([RoomId]) REFERENCES [dbo].[Rooms]([Id]) ON DELETE SET NULL
+                );
+
+                CREATE INDEX [IX_ViolationRecords_StudentId] ON [dbo].[ViolationRecords]([StudentId]);
+                CREATE INDEX [IX_ViolationRecords_RoomId] ON [dbo].[ViolationRecords]([RoomId]);
+                CREATE INDEX [IX_ViolationRecords_Status] ON [dbo].[ViolationRecords]([Status]);
+            END
+
+            IF OBJECT_ID(N'dbo.MaintenanceRequests', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[MaintenanceRequests]
+                (
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [StudentId] INT NOT NULL,
+                    [RoomId] INT NOT NULL,
+                    [EquipmentType] NVARCHAR(64) NOT NULL DEFAULT(N''),
+                    [OtherEquipmentName] NVARCHAR(160) NOT NULL DEFAULT(N''),
+                    [Description] NVARCHAR(1000) NOT NULL DEFAULT(N''),
+                    [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Submitted'),
+                    [AdminNote] NVARCHAR(500) NOT NULL DEFAULT(N''),
+                    [TechnicianName] NVARCHAR(160) NOT NULL DEFAULT(N''),
+                    [ApprovedAt] DATETIME2 NULL,
+                    [StartedAt] DATETIME2 NULL,
+                    [CompletedAt] DATETIME2 NULL,
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT(GETUTCDATE()),
+                    [UpdatedAt] DATETIME2 NULL,
+                    CONSTRAINT [FK_MaintenanceRequests_Students] FOREIGN KEY ([StudentId]) REFERENCES [dbo].[Students]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_MaintenanceRequests_Rooms] FOREIGN KEY ([RoomId]) REFERENCES [dbo].[Rooms]([Id]) ON DELETE NO ACTION
+                );
+
+                CREATE INDEX [IX_MaintenanceRequests_StudentId] ON [dbo].[MaintenanceRequests]([StudentId]);
+                CREATE INDEX [IX_MaintenanceRequests_RoomId] ON [dbo].[MaintenanceRequests]([RoomId]);
+                CREATE INDEX [IX_MaintenanceRequests_Status] ON [dbo].[MaintenanceRequests]([Status]);
+            END
+
+            IF OBJECT_ID(N'dbo.MaintenanceRequests', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.MaintenanceRequests', 'OtherEquipmentName') IS NULL
+                ALTER TABLE [dbo].[MaintenanceRequests] ADD [OtherEquipmentName] NVARCHAR(160) NOT NULL DEFAULT(N'');
+            """);
+    }
+
+    private static async Task EnsureStatusColumnsAsync(AppDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'dbo.Rooms', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Rooms', 'Status') IS NULL
+                ALTER TABLE [dbo].[Rooms] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Available');
+
+            IF OBJECT_ID(N'dbo.Students', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Students', 'Status') IS NULL
+                ALTER TABLE [dbo].[Students] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Active');
+
+            IF OBJECT_ID(N'dbo.Registrations', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Registrations', 'Status') IS NULL
+                ALTER TABLE [dbo].[Registrations] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Pending');
+
+            IF OBJECT_ID(N'dbo.Contracts', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Contracts', 'Status') IS NULL
+                ALTER TABLE [dbo].[Contracts] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Active');
+
+            IF OBJECT_ID(N'dbo.Invoices', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.Invoices', 'Status') IS NULL
+                ALTER TABLE [dbo].[Invoices] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid');
+
+            IF OBJECT_ID(N'dbo.RoomFeeProfiles', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomFeeProfiles', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomFeeProfiles] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Active');
+
+            IF OBJECT_ID(N'dbo.RoomFeeProfiles', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomFeeProfiles', 'EffectiveFrom') IS NULL
+                ALTER TABLE [dbo].[RoomFeeProfiles] ADD [EffectiveFrom] DATETIME2 NULL;
+
+            IF OBJECT_ID(N'dbo.RoomFeeProfiles', N'U') IS NOT NULL
+                UPDATE [dbo].[RoomFeeProfiles]
+                SET [EffectiveFrom] = CONVERT(date, GETDATE())
+                WHERE [EffectiveFrom] IS NULL;
+
+            IF OBJECT_ID(N'dbo.RoomFeeProfiles', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomFeeProfiles', 'EffectiveTo') IS NULL
+                ALTER TABLE [dbo].[RoomFeeProfiles] ADD [EffectiveTo] DATETIME2 NULL;
+
+            IF OBJECT_ID(N'dbo.RoomFinanceRecords', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomFinanceRecords', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomFinanceRecords] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid');
+
+            IF OBJECT_ID(N'dbo.RoomFinanceStudentShares', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomFinanceStudentShares', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomFinanceStudentShares] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Unpaid');
+
+            IF OBJECT_ID(N'dbo.RoomTransferRequests', N'U') IS NOT NULL
+                AND COL_LENGTH('dbo.RoomTransferRequests', 'Status') IS NULL
+                ALTER TABLE [dbo].[RoomTransferRequests] ADD [Status] NVARCHAR(32) NOT NULL DEFAULT(N'Pending');
+
+            IF OBJECT_ID(N'dbo.Invoices', N'U') IS NOT NULL
+                UPDATE [dbo].[Invoices]
+                SET [PaidDate] = NULL,
+                    [UpdatedAt] = GETUTCDATE()
+                WHERE [Status] <> N'Paid'
+                    AND [PaidDate] IS NOT NULL;
+
+            IF OBJECT_ID(N'dbo.RoomFinanceRecords', N'U') IS NOT NULL
+                UPDATE [dbo].[RoomFinanceRecords]
+                SET [PaidDate] = NULL,
+                    [UpdatedAt] = GETUTCDATE()
+                WHERE [Status] <> N'Paid'
+                    AND [PaidDate] IS NOT NULL;
             """);
     }
 }

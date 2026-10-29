@@ -36,6 +36,7 @@ public class TransferStudentRequest
     public int ToRoomId { get; set; }
     public string Status { get; set; } = "Active";
     public string Note { get; set; } = string.Empty;
+    
 }
 
 public class RemoveStudentRequest

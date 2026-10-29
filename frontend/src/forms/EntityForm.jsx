@@ -12,6 +12,7 @@ export function EntityForm({ modal, lookups, updateModalField, errors = {} }) {
   const fields = ENTITY_CONFIGS[modal.entityKey].fields.filter((field) => {
     if (modal.mode === "create" && field.editOnly) return false;
     if (modal.mode !== "create" && field.createOnly) return false;
+    if (field.showWhen && !field.showWhen(modal.values)) return false;
     return true;
   });
 
@@ -31,7 +32,7 @@ export function EntityForm({ modal, lookups, updateModalField, errors = {} }) {
               {renderInputField(
                 field,
                 modal.values[field.name],
-                lookups[field.lookup] ?? [],
+                getLookupItems(field, lookups[field.lookup] ?? [], modal.values),
                 updateModalField,
                 inputId,
               )}
@@ -44,6 +45,14 @@ export function EntityForm({ modal, lookups, updateModalField, errors = {} }) {
       })}
     </div>
   );
+}
+
+function getLookupItems(field, lookupItems, values) {
+  if (typeof field.filterLookup === "function") {
+    return lookupItems.filter((item) => field.filterLookup(item, values));
+  }
+
+  return lookupItems;
 }
 
 function focusFieldControl(event) {

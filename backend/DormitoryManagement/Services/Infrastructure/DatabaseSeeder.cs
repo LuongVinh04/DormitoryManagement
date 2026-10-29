@@ -1,6 +1,7 @@
 using Dormitory.Models.DataContexts;
 using Dormitory.Models.Entities;
 using DormitoryManagement.Services.Facilities;
+using DormitoryManagement.Services.Operations;
 using Microsoft.EntityFrameworkCore;
 
 namespace DormitoryManagement.Services.Infrastructure;
@@ -17,6 +18,8 @@ public static class DatabaseSeeder
         {
             await SeedCatalogDefaultsAsync(db);
             await SeedFinanceDefaultsAsync(db);
+            await DormitoryWorkflowService.ReconcileRoomFinanceRecordsFromSharesAsync(db);
+            await db.SaveChangesAsync();
             return;
         }
 
@@ -44,8 +47,8 @@ public static class DatabaseSeeder
 
         var buildings = new List<Buildings>
         {
-            new() { Code = "A", Name = "Khu A", GenderPolicy = "Male", NumberOfFloors = 5, ManagerName = "Nguyen Van A", Description = "Khu nha nam sinh", CreatedAt = now },
-            new() { Code = "B", Name = "Khu B", GenderPolicy = "Female", NumberOfFloors = 6, ManagerName = "Tran Thi B", Description = "Khu nha nu sinh", CreatedAt = now }
+            new() { Code = "A", Name = "Khu A", GenderPolicy = "Male", NumberOfFloors = 5, RoomCount = 2, ManagerName = "Nguyen Van A", Description = "Khu nha nam sinh", CreatedAt = now },
+            new() { Code = "B", Name = "Khu B", GenderPolicy = "Female", NumberOfFloors = 6, RoomCount = 2, ManagerName = "Tran Thi B", Description = "Khu nha nu sinh", CreatedAt = now }
         };
         db.Buildings.AddRange(buildings);
         await db.SaveChangesAsync();
@@ -149,6 +152,8 @@ public static class DatabaseSeeder
 
         await db.SaveChangesAsync();
         await SeedFinanceDefaultsAsync(db);
+        await DormitoryWorkflowService.ReconcileRoomFinanceRecordsFromSharesAsync(db);
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedFinanceDefaultsAsync(AppDbContext db)
@@ -171,6 +176,8 @@ public static class DatabaseSeeder
                 OtherFee = 0,
                 OtherFeeName = string.Empty,
                 BillingCycleDay = 10,
+                EffectiveFrom = DateTime.Today,
+                Status = "Active",
                 Notes = "Cau hinh phi mac dinh theo phong",
                 CreatedAt = now
             })
@@ -314,27 +321,67 @@ public static class DatabaseSeeder
                     WaterUnitPrice = 15000,
                     Description = "Phòng chia sẻ phổ biến cho bốn sinh viên.",
                     CreatedAt = now
+                },
+                new RoomCategory
+                {
+                    Code = "SHARED8",
+                    Name = "Phòng 8 người",
+                    BedLayout = "4 giường tầng, tối đa 8 người",
+                    DefaultCapacity = 8,
+                    BaseMonthlyFee = 900000,
+                    DepositAmount = 900000,
+                    HygieneFee = 120000,
+                    ServiceFee = 100000,
+                    InternetFee = 120000,
+                    ElectricityUnitPrice = 3500,
+                    WaterUnitPrice = 15000,
+                    Description = "Phòng chia sẻ sức chứa lớn cho tám sinh viên.",
+                    CreatedAt = now
                 });
             await db.SaveChangesAsync();
         }
-        else if (!await db.RoomCategories.AnyAsync(x => x.Code == "SHARED4"))
+        else
         {
-            db.RoomCategories.Add(new RoomCategory
+            if (!await db.RoomCategories.AnyAsync(x => x.Code == "SHARED4"))
             {
-                Code = "SHARED4",
-                Name = "Phòng 4 người",
-                BedLayout = "2 giường tầng, tối đa 4 người",
-                DefaultCapacity = 4,
-                BaseMonthlyFee = 1400000,
-                DepositAmount = 1400000,
-                HygieneFee = 90000,
-                ServiceFee = 110000,
-                InternetFee = 120000,
-                ElectricityUnitPrice = 3500,
-                WaterUnitPrice = 15000,
-                Description = "Phòng chia sẻ phổ biến cho bốn sinh viên.",
-                CreatedAt = now
-            });
+                db.RoomCategories.Add(new RoomCategory
+                {
+                    Code = "SHARED4",
+                    Name = "Phòng 4 người",
+                    BedLayout = "2 giường tầng, tối đa 4 người",
+                    DefaultCapacity = 4,
+                    BaseMonthlyFee = 1400000,
+                    DepositAmount = 1400000,
+                    HygieneFee = 90000,
+                    ServiceFee = 110000,
+                    InternetFee = 120000,
+                    ElectricityUnitPrice = 3500,
+                    WaterUnitPrice = 15000,
+                    Description = "Phòng chia sẻ phổ biến cho bốn sinh viên.",
+                    CreatedAt = now
+                });
+            }
+
+            if (!await db.RoomCategories.AnyAsync(x => x.Code == "SHARED8"))
+            {
+                db.RoomCategories.Add(new RoomCategory
+                {
+                    Code = "SHARED8",
+                    Name = "Phòng 8 người",
+                    BedLayout = "4 giường tầng, tối đa 8 người",
+                    DefaultCapacity = 8,
+                    BaseMonthlyFee = 900000,
+                    DepositAmount = 900000,
+                    HygieneFee = 120000,
+                    ServiceFee = 100000,
+                    InternetFee = 120000,
+                    ElectricityUnitPrice = 3500,
+                    WaterUnitPrice = 15000,
+                    Description = "Phòng chia sẻ sức chứa lớn cho tám sinh viên.",
+                    CreatedAt = now
+                });
+            }
+
             await db.SaveChangesAsync();
         }
 
@@ -350,7 +397,7 @@ public static class DatabaseSeeder
                 new RoomZone
                 {
                     Code = "A-LOW",
-                    Name = "Khu A tầng thấp",
+                    Name = "Khu A",
                     BuildingId = firstBuilding?.Id,
                     GenderPolicy = firstBuilding?.GenderPolicy ?? "Mixed",
                     FloorFrom = 1,
@@ -362,7 +409,7 @@ public static class DatabaseSeeder
                 new RoomZone
                 {
                     Code = "B-FEMALE",
-                    Name = "Khu nữ B",
+                    Name = "Khu B",
                     BuildingId = secondBuilding?.Id,
                     GenderPolicy = secondBuilding?.GenderPolicy ?? "Female",
                     FloorFrom = 1,
@@ -384,7 +431,9 @@ public static class DatabaseSeeder
                     ? "DOUBLE"
                     : room.Capacity <= 4
                         ? "SHARED4"
-                        : "BUNK";
+                        : room.Capacity <= 6
+                            ? "BUNK"
+                            : "SHARED8";
 
             var category = categories.FirstOrDefault(x => x.Code == preferredCode)
                 ?? categories.FirstOrDefault();

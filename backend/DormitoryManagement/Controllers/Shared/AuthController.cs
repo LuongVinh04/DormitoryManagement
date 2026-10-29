@@ -28,13 +28,16 @@ namespace DormitoryManagement.Controllers.Shared
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            var username = request.Username.Trim();
+            var normalizedUsername = username.ToLower();
+
             var user = await _db.Users
                 .Include(u => u.Role)
                 .ThenInclude(r => r.RolePermissions)
                 .ThenInclude(rp => rp.Permission)
                 .Include(u => u.UserPermissions)
                 .ThenInclude(up => up.Permission)
-                .FirstOrDefaultAsync(x => x.Username == request.Username);
+                .FirstOrDefaultAsync(x => x.Username.ToLower() == normalizedUsername);
 
             if (user == null || !user.IsActive)
             {

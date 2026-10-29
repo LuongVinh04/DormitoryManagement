@@ -19,10 +19,20 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         await RoomOccupancyService.RecalculateAllRoomsAsync(db);
         await db.SaveChangesAsync();
 
-        var data = await db.Buildings
+        var buildings = await db.Buildings
             .Include(x => x.Rooms)
             .OrderBy(x => x.Code)
-            .Select(x => new
+            .ToListAsync();
+
+        var zones = await db.RoomZones
+            .AsNoTracking()
+            .OrderBy(x => x.Code)
+            .ToListAsync();
+
+        var data = buildings.Select(x =>
+        {
+            var buildingZones = zones.Where(z => z.BuildingId == x.Id).ToList();
+            return new
             {
                 x.Id,
                 x.Code,
@@ -31,12 +41,15 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
                 x.NumberOfFloors,
                 x.ManagerName,
                 x.Description,
-                roomCount = x.Rooms.Count,
+                roomZoneNames = string.Join(", ", buildingZones.Select(z => z.Name)),
+                roomZoneCount = buildingZones.Count,
+                roomCount = x.RoomCount,
+                actualRoomCount = x.Rooms.Count,
                 totalCapacity = x.Rooms.Sum(r => r.Capacity),
                 currentOccupancy = x.Rooms.Sum(r => r.CurrentOccupancy),
                 createdAt = x.CreatedAt
-            })
-            .ToListAsync();
+            };
+        }).ToList();
 
         return Ok(data);
     }
@@ -50,6 +63,7 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
             Name = request.Name.Trim(),
             GenderPolicy = request.GenderPolicy.Trim(),
             NumberOfFloors = request.NumberOfFloors,
+            RoomCount = request.RoomCount,
             ManagerName = request.ManagerName.Trim(),
             Description = request.Description.Trim()
         };
@@ -69,6 +83,7 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         entity.Name = request.Name.Trim();
         entity.GenderPolicy = request.GenderPolicy.Trim();
         entity.NumberOfFloors = request.NumberOfFloors;
+        entity.RoomCount = request.RoomCount;
         entity.ManagerName = request.ManagerName.Trim();
         entity.Description = request.Description.Trim();
         entity.UpdatedAt = DateTime.UtcNow;
@@ -250,6 +265,9 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
     [HttpPost("rooms")]
     public async Task<IActionResult> CreateRoom([FromBody] RoomRequest request)
     {
+        var zoneValidation = await ValidateRoomZoneAsync(request.BuildingId, request.RoomZoneId);
+        if (zoneValidation is not null) return zoneValidation;
+
         var category = request.RoomCategoryId.HasValue
             ? await db.RoomCategories.FindAsync(request.RoomCategoryId.Value)
             : null;
@@ -280,6 +298,10 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
     {
         var entity = await db.Rooms.FindAsync(id);
         if (entity is null) return NotFound();
+
+        var zoneValidation = await ValidateRoomZoneAsync(request.BuildingId, request.RoomZoneId);
+        if (zoneValidation is not null) return zoneValidation;
+
         var category = request.RoomCategoryId.HasValue
             ? await db.RoomCategories.FindAsync(request.RoomCategoryId.Value)
             : null;
@@ -395,6 +417,8 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
                 ServiceFee = category.ServiceFee,
                 InternetFee = category.InternetFee,
                 BillingCycleDay = 10,
+                EffectiveFrom = DateTime.Today,
+                Status = "Active",
                 Notes = $"Tạo tự động từ loại phòng {category.Name}"
             });
             return;
@@ -407,5 +431,31 @@ public class FacilitiesController(AppDbContext db) : ControllerBase
         profile.ServiceFee = category.ServiceFee;
         profile.InternetFee = category.InternetFee;
         profile.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private async Task<IActionResult?> ValidateRoomZoneAsync(int buildingId, int? roomZoneId)
+    {
+        if (!await db.Buildings.AnyAsync(x => x.Id == buildingId))
+        {
+            return BadRequest(new { message = "Tòa nhà không hợp lệ." });
+        }
+
+        if (!roomZoneId.HasValue)
+        {
+            return null;
+        }
+
+        var zone = await db.RoomZones.AsNoTracking().FirstOrDefaultAsync(x => x.Id == roomZoneId.Value);
+        if (zone is null)
+        {
+            return BadRequest(new { message = "Phân khu không hợp lệ." });
+        }
+
+        if (zone.BuildingId.HasValue && zone.BuildingId.Value != buildingId)
+        {
+            return BadRequest(new { message = "Phân khu phải thuộc cùng tòa nhà với phòng." });
+        }
+
+        return null;
     }
 }

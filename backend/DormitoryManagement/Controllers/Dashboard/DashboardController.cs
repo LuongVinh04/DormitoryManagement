@@ -14,6 +14,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> GetDashboard()
     {
         await DormitoryWorkflowService.ApplyContractExpiryRulesAsync(db);
+        await DormitoryWorkflowService.ReconcileRoomFinanceRecordsFromSharesAsync(db);
         await RoomOccupancyService.RecalculateAllRoomsAsync(db);
         await db.SaveChangesAsync();
 
@@ -22,6 +23,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var rooms = await db.Rooms.Include(x => x.Building).AsNoTracking().ToListAsync();
         var students = await db.Students.AsNoTracking().ToListAsync();
         var contracts = await db.Contracts.AsNoTracking().ToListAsync();
+        var violations = await db.ViolationRecords.AsNoTracking().ToListAsync();
+        var maintenanceRequests = await db.MaintenanceRequests.AsNoTracking().ToListAsync();
         var registrations = await db.Registrations
             .Include(x => x.Student)
             .Include(x => x.Room)
@@ -41,18 +44,24 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var waitingStudents = students.Count(x => x.Status is "Waiting" or "Pending");
         var activeContracts = contracts.Count(x => x.Status == "Active" && x.StartDate.Date <= DateTime.Today && x.EndDate.Date >= DateTime.Today);
         var expiringContracts = contracts.Count(x => x.EndDate <= DateTime.Today.AddDays(45) && x.EndDate >= DateTime.Today && x.Status == "Active");
-        var unpaidInvoices = financeRecords.Count > 0
-            ? financeRecords.Count(x => x.Status != "Paid")
-            : allInvoices.Count(x => x.Status != "Paid");
-        var overdueInvoices = financeRecords.Count > 0
-            ? financeRecords.Count(x => x.Status != "Paid" && x.DueDate.Date < DateTime.Today)
-            : allInvoices.Count(x => x.Status != "Paid" && x.DueDate.Date < DateTime.Today);
-        var revenueThisMonth = financeRecords.Count > 0
-            ? currentMonthRecords.Sum(x => x.Total)
-            : allInvoices
-                .Where(x => x.BillingMonth.Year == DateTime.Today.Year && x.BillingMonth.Month == DateTime.Today.Month)
-                .Sum(x => x.Total);
+        var unpaidInvoices = allInvoices.Count(x => x.Status != "Paid");
+        var overdueInvoices = allInvoices.Count(x => x.Status != "Paid" && x.DueDate.Date < DateTime.Today);
+        var revenueThisMonth = allInvoices
+            .Where(x => x.BillingMonth.Year == DateTime.Today.Year && x.BillingMonth.Month == DateTime.Today.Month)
+            .Sum(x => x.Total);
         var activeUsers = users.Count(x => x.IsActive);
+        var today = DateTime.Today;
+        var currentMonthViolations = violations
+            .Where(x => x.ViolationDate.Year == today.Year && x.ViolationDate.Month == today.Month)
+            .ToList();
+        var unpaidViolationFines = violations
+            .Where(x => x.Status is not ("Paid" or "Cancelled"))
+            .Sum(x => x.FineAmount);
+        var openMaintenanceRequests = maintenanceRequests
+            .Count(x => x.Status is not ("Done" or "Rejected"));
+        var maintenanceOverdueCutoff = DateTime.UtcNow.AddHours(-48);
+        var overdueMaintenanceRequests = maintenanceRequests
+            .Count(x => x.Status is not ("Done" or "Rejected") && x.CreatedAt < maintenanceOverdueCutoff);
 
         var occupancyByBuilding = rooms
             .GroupBy(x => x.Building!.Name)
@@ -74,7 +83,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
             })
             .ToList();
 
-        var invoiceStatus = (financeRecords.Count > 0 ? financeRecords.Select(x => new { x.Status, x.Total }) : allInvoices.Select(x => new { x.Status, x.Total }))
+        var invoiceStatus = allInvoices.Select(x => new { x.Status, x.Total })
             .GroupBy(x => x.Status)
             .Select(g => new
             {
@@ -84,9 +93,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
             })
             .ToList();
 
-        var monthlyRevenueData = (financeRecords.Count > 0
-                ? financeRecords.Select(x => new { x.BillingMonth, x.Total, x.Status })
-                : allInvoices.Select(x => new { x.BillingMonth, x.Total, x.Status }))
+        var monthlyRevenueData = allInvoices.Select(x => new { x.BillingMonth, x.Total, x.Status })
             .OrderBy(x => x.BillingMonth)
             .GroupBy(x => new { x.BillingMonth.Year, x.BillingMonth.Month })
             .Select(g => new
@@ -96,6 +103,37 @@ public class DashboardController(AppDbContext db) : ControllerBase
                 paid = g.Where(x => x.Status == "Paid").Sum(x => x.Total),
                 unpaid = g.Where(x => x.Status != "Paid").Sum(x => x.Total)
             })
+            .ToList();
+
+        var violationByType = violations
+            .GroupBy(x => x.ViolationType)
+            .Select(g => new
+            {
+                type = g.Key,
+                count = g.Count(),
+                fineAmount = g.Sum(x => x.FineAmount),
+                trainingPointDeduction = g.Sum(x => x.TrainingPointDeduction)
+            })
+            .OrderByDescending(x => x.count)
+            .ToList();
+
+        var maintenanceByStatus = maintenanceRequests
+            .GroupBy(x => x.Status)
+            .Select(g => new
+            {
+                status = g.Key,
+                count = g.Count()
+            })
+            .ToList();
+
+        var maintenanceByEquipment = maintenanceRequests
+            .GroupBy(x => x.EquipmentType)
+            .Select(g => new
+            {
+                equipment = g.Key,
+                count = g.Count()
+            })
+            .OrderByDescending(x => x.count)
             .ToList();
 
         var recentActivities = registrations
@@ -132,6 +170,20 @@ public class DashboardController(AppDbContext db) : ControllerBase
                 title = "Hợp đồng sắp hết hạn",
                 value = expiringContracts,
                 description = "Theo dõi gia hạn hoặc thanh lý hợp đồng."
+            },
+            new
+            {
+                level = overdueMaintenanceRequests > 0 ? "high" : "low",
+                title = "Bảo trì quá hạn xử lý",
+                value = overdueMaintenanceRequests,
+                description = "Yêu cầu bảo trì quá 48 giờ chưa hoàn tất."
+            },
+            new
+            {
+                level = unpaidViolationFines > 0 ? "medium" : "low",
+                title = "Tiền phạt chưa thu",
+                value = violations.Count(x => x.Status is not ("Paid" or "Cancelled")),
+                description = "Biên bản vi phạm đang chờ xác nhận hoặc nộp phạt."
             }
         };
 
@@ -216,6 +268,42 @@ public class DashboardController(AppDbContext db) : ControllerBase
             });
         }
 
+        if (overdueMaintenanceRequests > 0)
+        {
+            notifications.Add(new
+            {
+                id = "overdue-maintenance",
+                type = "operations",
+                severity = "danger",
+                title = "Bảo trì quá hạn",
+                description = $"Có {overdueMaintenanceRequests} yêu cầu bảo trì quá 48 giờ chưa hoàn tất.",
+                count = overdueMaintenanceRequests,
+                amount = (decimal?)null,
+                route = "/operations",
+                panelKey = "operations-maintenance",
+                panelId = "panel-operations-maintenance",
+                actionLabel = "Đi tới bảo trì"
+            });
+        }
+
+        if (unpaidViolationFines > 0)
+        {
+            notifications.Add(new
+            {
+                id = "unpaid-violations",
+                type = "operations",
+                severity = "warning",
+                title = "Tiền phạt chưa thu",
+                description = $"Còn {unpaidViolationFines:N0} đ tiền phạt vi phạm chưa thu.",
+                count = violations.Count(x => x.Status is not ("Paid" or "Cancelled")),
+                amount = unpaidViolationFines,
+                route = "/operations",
+                panelKey = "operations-violations",
+                panelId = "panel-operations-violations",
+                actionLabel = "Đi tới vi phạm"
+            });
+        }
+
         return Ok(new
         {
             summary = new
@@ -228,15 +316,24 @@ public class DashboardController(AppDbContext db) : ControllerBase
                 waitingStudents,
                 activeContracts,
                 expiringContracts,
+                expiringContracts7Days = contracts.Count(x => x.EndDate <= DateTime.Today.AddDays(7) && x.EndDate >= DateTime.Today && x.Status == "Active"),
                 unpaidInvoices,
                 overdueInvoices,
                 activeUsers,
-                revenueThisMonth
+                revenueThisMonth,
+                violationsThisMonth = currentMonthViolations.Count,
+                unpaidViolationFines,
+                trainingPointsDeductedThisMonth = currentMonthViolations.Sum(x => x.TrainingPointDeduction),
+                openMaintenanceRequests,
+                overdueMaintenanceRequests
             },
             occupancyByBuilding,
             roomStatus,
             invoiceStatus,
             monthlyRevenue = monthlyRevenueData,
+            violationByType,
+            maintenanceByStatus,
+            maintenanceByEquipment,
             recentActivities,
             alerts,
             roomSnapshots,

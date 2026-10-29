@@ -73,6 +73,8 @@ public static class DormitoryWorkflowService
             return (false, validation.Message, student, room);
         }
 
+        var previousRoomId = student.RoomId;
+
         //lấy phòng hiện tại
         var currentAssignment = await db.RoomAssignments
             .FirstOrDefaultAsync(x => x.StudentId == studentId && x.Status == RoomAssignmentStatus.Active);
@@ -88,8 +90,6 @@ public static class DormitoryWorkflowService
         {
             currentAssignment.Status = RoomAssignmentStatus.Moved;
             currentAssignment.ToDate = DateTime.UtcNow;
-
-            await RoomOccupancyService.RecalculateRoomAsync(db, currentAssignment.RoomId);
         }
 
         //tạo điều phối phòng mới
@@ -101,8 +101,21 @@ public static class DormitoryWorkflowService
             Status = RoomAssignmentStatus.Active
         };
 
+        db.RoomAssignments.Add(newAssignment);
+
+        student.RoomId = roomId;
+        student.Status = status;
+        student.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+
+        if (previousRoomId.HasValue && previousRoomId.Value != roomId)
+        {
+            await RoomOccupancyService.RecalculateRoomAsync(db, previousRoomId.Value);
+        }
+
         //cập nhật phòng mới
-        await RoomOccupancyService.RecalculateRoomAsync (db, roomId);
+        await RoomOccupancyService.RecalculateRoomAsync(db, roomId);
 
         //note
         if (!string.IsNullOrWhiteSpace(note))

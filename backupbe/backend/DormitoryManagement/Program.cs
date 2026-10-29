@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using DormitoryManagement.Services;
+using DormitoryManagement.Services.Contracts;
+using DormitoryManagement.Hubs;
+using DormitoryManagement.Services.Realtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +25,11 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<VnPayService>();
+builder.Services.AddScoped<ContractFileStorageService>();
+builder.Services.AddScoped<ContractNotificationEmailService>();
+builder.Services.AddScoped<RealtimeBroadcastService>();
+builder.Services.AddHostedService<ContractExpiryHostedService>();
+builder.Services.AddSignalR();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -35,6 +43,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/realtime-hub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 builder.Services.AddAuthorization();
@@ -100,6 +122,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<RealtimeHub>("/realtime-hub");
 app.MapFallbackToFile("index.html");
 
 app.Run();

@@ -121,3 +121,41 @@ public class StudentSharePaymentRequest
     public string PaymentMethod { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
 }
+
+public class ViolationRecordRequest
+{
+    public int StudentId { get; set; }
+    public int? RoomId { get; set; }
+    public string ViolationType { get; set; } = "Noise";
+    public string Description { get; set; } = string.Empty;
+    public decimal FineAmount { get; set; }
+    public int TrainingPointDeduction { get; set; }
+    public DateTime ViolationDate { get; set; }
+    public string Status { get; set; } = "Pending";
+    public string HandledBy { get; set; } = string.Empty;
+    public string Note { get; set; } = string.Empty;
+}
+
+public class ViolationDecisionRequest
+{
+    public string Note { get; set; } = string.Empty;
+    public string HandledBy { get; set; } = string.Empty;
+}
+
+public class MaintenanceRequestRequest
+{
+    public int StudentId { get; set; }
+    public int RoomId { get; set; }
+    public string EquipmentType { get; set; } = "Fan";
+    public string OtherEquipmentName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Status { get; set; } = "Submitted";
+    public string AdminNote { get; set; } = string.Empty;
+    public string TechnicianName { get; set; } = string.Empty;
+}
+
+public class MaintenanceDecisionRequest
+{
+    public string AdminNote { get; set; } = string.Empty;
+    public string TechnicianName { get; set; } = string.Empty;
+}

@@ -281,6 +281,35 @@ export function OperationsSection({
       </Panel>
 
       <CrudPanel
+        entityKey="violations"
+        rows={data.violations}
+        onCreate={openCreate}
+        onEdit={openEdit}
+        onDelete={deleteEntity}
+        panelProps={{ ...getPanelProps('operations-violations'), panelId: 'panel-operations-violations' }}
+        extraRowActions={(item) => [
+          item.status === 'Pending' ? { label: 'Xác nhận', kind: 'approve', onClick: () => executeAction(() => apiFetch(`/api/operations/violations/${item.id}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'Xác nhận từ giao diện vận hành.' }) }), 'Đã xác nhận vi phạm.') } : null,
+          item.status !== 'Paid' && item.status !== 'Cancelled' ? { label: 'Đã nộp phạt', kind: 'approve', onClick: () => executeAction(() => apiFetch(`/api/operations/violations/${item.id}/mark-paid`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'Đã ghi nhận nộp phạt.' }) }), 'Đã ghi nhận nộp phạt.') } : null,
+          item.status !== 'Cancelled' ? { label: 'Hủy', kind: 'danger', onClick: () => executeAction(() => apiFetch(`/api/operations/violations/${item.id}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: 'ủy biên bản từ giao diện vận hành.' }) }), 'Đã hủy biên bản vi phạm.') } : null,
+        ]}
+      />
+
+      <CrudPanel
+        entityKey="maintenanceRequests"
+        rows={data.maintenanceRequests}
+        onCreate={openCreate}
+        onEdit={openEdit}
+        onDelete={deleteEntity}
+        panelProps={{ ...getPanelProps('operations-maintenance'), panelId: 'panel-operations-maintenance' }}
+        extraRowActions={(item) => [
+          item.status === 'Submitted' ? { label: 'Duyệt', kind: 'approve', onClick: () => executeAction(() => apiFetch(`/api/operations/maintenance-requests/${item.id}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminNote: 'Đã duyệt yêu cầu bảo trì.' }) }), 'Đã duyệt yêu cầu bảo trì.') } : null,
+          item.status === 'Submitted' ? { label: 'Từ chối', kind: 'danger', onClick: () => executeAction(() => apiFetch(`/api/operations/maintenance-requests/${item.id}/reject`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminNote: 'Từ chối yêu cầu bảo trì.' }) }), 'Đã từ chối yêu cầu bảo trì.') } : null,
+          item.status === 'Approved' ? { label: 'Xử lý', kind: 'approve', onClick: () => executeAction(() => apiFetch(`/api/operations/maintenance-requests/${item.id}/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ technicianName: item.technicianName || '' }) }), 'Đã chuyển sang đang xử lý.') } : null,
+          item.status === 'Approved' || item.status === 'InProgress' ? { label: 'Done', kind: 'approve', onClick: () => executeAction(() => apiFetch(`/api/operations/maintenance-requests/${item.id}/done`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ technicianName: item.technicianName || '' }) }), 'Đã hoàn tất yêu cầu bảo trì.') } : null,
+        ]}
+      />
+
+      <CrudPanel
         entityKey="registrations"
         rows={data.registrations}
         onCreate={openCreate}

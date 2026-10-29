@@ -62,7 +62,7 @@ export function repairText(value) {
   }
 }
 
-export function renderCell(value) {
+export function renderCell(value, options = null) {
   if (typeof value === "boolean") return value ? "Có" : "Không";
   if (typeof value === "number" && value > 100000)
     return currencyFormat.format(value);
@@ -74,6 +74,11 @@ export function renderCell(value) {
     return shortDate(value);
   }
   if (typeof value === "string") {
+    if (Array.isArray(options)) {
+      const matchedOption = options.find((option) => option.value === value);
+      if (matchedOption) return matchedOption.label;
+    }
+
     return localizeValue(value);
   }
   return value ?? "-";
@@ -236,4 +241,38 @@ export async function apiFetch(url, options = {}) {
   } finally {
     await endLoading();
   }
+}
+
+export async function openBlobInNewTab(url, fallbackName = "document.pdf") {
+  const response = await apiFetch(url, { skipGlobalLoading: true });
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = fallbackName;
+    link.click();
+  }
+
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+}
+
+export async function downloadBlob(url, fileName = "document.pdf") {
+  const response = await apiFetch(url, { skipGlobalLoading: true });
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
 }

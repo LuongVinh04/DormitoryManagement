@@ -2,7 +2,7 @@
 setlocal
 
 set ROOT=%~dp0
-set BACKEND_PORT=5101
+set BACKEND_PORT=5105
 set FRONTEND_PORT=5173
 
 echo ==================================================
@@ -20,7 +20,7 @@ echo Starting backend on http://127.0.0.1:%BACKEND_PORT% ...
 start "Backend - .NET" cmd /k "cd /d ""%ROOT%backend\DormitoryManagement"" && dotnet run --urls http://127.0.0.1:%BACKEND_PORT%"
 
 echo Starting frontend on http://127.0.0.1:%FRONTEND_PORT% ...
-start "Frontend - Vite" cmd /k "cd /d ""%ROOT%frontend"" && npm run dev -- --host 127.0.0.1 --port %FRONTEND_PORT%"
+start "Frontend - Vite" cmd /k "cd /d ""%ROOT%frontend"" && npm run dev -- --host 127.0.0.1 --port %FRONTEND_PORT% --strictPort"
 
 echo.
 echo Both services are starting in separate windows.

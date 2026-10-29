@@ -27,6 +27,8 @@ namespace Dormitory.Models.DataContexts
         public DbSet<RoomFinanceStudentShare> RoomFinanceStudentShares { get; set; }
         public DbSet<RoomTransferRequest> RoomTransferRequests { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<ViolationRecord> ViolationRecords { get; set; }
+        public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -81,8 +83,7 @@ namespace Dormitory.Models.DataContexts
                 .IsUnique();
 
             modelBuilder.Entity<Contract>()
-                .HasIndex(x => x.StudentId)
-                .IsUnique();
+                .HasIndex(x => x.StudentId);
 
             modelBuilder.Entity<RoomFeeProfile>()
                 .HasIndex(x => x.RoomId)
@@ -271,6 +272,30 @@ namespace Dormitory.Models.DataContexts
                 .HasOne(x => x.Receiver)
                 .WithMany()
                 .HasForeignKey(x => x.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ViolationRecord>()
+                .HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ViolationRecord>()
+                .HasOne(x => x.Room)
+                .WithMany()
+                .HasForeignKey(x => x.RoomId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<MaintenanceRequest>()
+                .HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MaintenanceRequest>()
+                .HasOne(x => x.Room)
+                .WithMany()
+                .HasForeignKey(x => x.RoomId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

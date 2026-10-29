@@ -20,6 +20,7 @@ public class ContractRequest
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string Status { get; set; } = "Active";
+    public string? PdfPublicUrl { get; set; }
 }
 
 public class UtilityRequest
